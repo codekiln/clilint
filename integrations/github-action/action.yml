@@ -1,0 +1,49 @@
+name: clilint
+description: >-
+  Lint a CLI executable for conformance with clilint. Runs clilint against a
+  target executable and fails the step when a rule fails or the score drops
+  below the configured minimum.
+
+# This is a composite action. It expects clilint to be available on disk
+# relative to this action (i.e. the action is used from within a checkout of
+# codekiln/clilint, or a repo that vendors clilint at its root). Consumers who
+# do not vendor clilint should check out codekiln/clilint into a subdirectory
+# and invoke `python <checkout>/clilint check ...` directly instead (see
+# example-workflow.yml).
+
+inputs:
+  target:
+    description: Path to the CLI executable to lint.
+    required: true
+  profile:
+    description: Conformance profile to check against.
+    required: false
+    default: generated-cli
+  min-score:
+    description: Fail (exit 1) if the score is below this value.
+    required: false
+    default: "0"
+  format:
+    description: Output format (human, plain, or json).
+    required: false
+    default: human
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+
+    - name: Run clilint
+      shell: bash
+      run: |
+        python "$GITHUB_ACTION_PATH/../../clilint" check "${{ inputs.target }}" \
+          --profile "${{ inputs.profile }}" \
+          --min-score "${{ inputs.min-score }}" \
+          --format "${{ inputs.format }}"
+
+branding:
+  icon: check-circle
+  color: green

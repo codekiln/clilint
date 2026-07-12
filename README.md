@@ -6,8 +6,24 @@ can iterate a CLI toward a shared standard.
 
 > This CLI scores 84 under CLI Lint 0.1.
 
-`clilint` is early-stage. This repository holds both the **CLI Lint** standard and its reference
-linter.
+`clilint` is early-stage but working. This repository holds both the **CLI Lint** standard and its
+reference linter — a zero-dependency Python 3.10+ tool that runs behavioral probes against a target
+executable.
+
+## Quickstart
+
+Run it straight from a checkout — no install, no dependencies beyond Python 3.10+:
+
+```bash
+git clone https://github.com/codekiln/clilint
+cd clilint
+
+./clilint check ./fixtures/good-cli/greet     # a conformant example → 100/100
+./clilint check ./fixtures/bad-cli/badtool    # a broken example → low score, exit 1
+./clilint check ./clilint                      # clilint lints itself
+```
+
+`clilint check` exits non-zero when any rule fails, so it works as a CI gate.
 
 ## What it is
 
@@ -98,6 +114,24 @@ clilint/
 ├── fixtures/        # Conformant and nonconformant example CLIs
 └── integrations/    # GitHub Actions, pre-commit, agent skills
 ```
+
+## How it works
+
+1. **Rules** (`rules/*.json`) declare each `CLI-` criterion: category, severity, score weight, rationale, and remediation.
+2. **Probes** (`probes/*.py`) run the target executable — `--help`, `-h`, `--version`, an invalid flag, no args — and turn what they observe into findings against those rules.
+3. The engine (`src/clilint/`) assembles findings into a scored **CLI Lint Report** (`schemas/report.schema.json`), in human, `--plain`, or `--json` form.
+
+Adding a rule means adding an entry to a `rules/*.json` file and teaching a probe to emit a finding for it.
+
+## Development
+
+```bash
+python -m unittest discover -s tests      # end-to-end tests against the fixtures
+```
+
+`clilint` uses only the Python standard library. The supported way to run it is from a repository
+checkout (`./clilint` or `python -m clilint` with `src/` on `PYTHONPATH`); a `pyproject.toml` is
+included for packaging.
 
 ## Sources
 

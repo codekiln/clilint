@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/codekiln/clilint/schemas/report.schema.json",
+  "title": "CLI Lint Report",
+  "description": "The machine-readable result emitted by `clilint check --format json`.",
+  "type": "object",
+  "required": ["clilint_version", "standard", "profile", "target", "score", "summary", "findings"],
+  "additionalProperties": false,
+  "properties": {
+    "clilint_version": {"type": "string", "description": "Version of clilint that produced the report."},
+    "standard": {"type": "string", "description": "The CLI Lint standard version, e.g. 'CLI Lint 0.1'."},
+    "profile": {"type": "string", "description": "The conformance profile applied."},
+    "target": {"type": "string", "description": "The linted executable, as given on the command line."},
+    "score": {"type": "integer", "minimum": 0, "maximum": 100},
+    "summary": {
+      "type": "object",
+      "required": ["pass", "warn", "fail", "skip", "total"],
+      "additionalProperties": false,
+      "properties": {
+        "pass": {"type": "integer", "minimum": 0},
+        "warn": {"type": "integer", "minimum": 0},
+        "fail": {"type": "integer", "minimum": 0},
+        "skip": {"type": "integer", "minimum": 0},
+        "total": {"type": "integer", "minimum": 0}
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/finding"}
+    }
+  },
+  "definitions": {
+    "finding": {
+      "type": "object",
+      "required": ["rule", "category", "title", "severity", "status", "weight", "detail", "remediation", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "rule": {"type": "string", "pattern": "^CLI-[A-Z]+-[0-9]+$"},
+        "category": {"type": "string"},
+        "title": {"type": "string"},
+        "severity": {"type": "string", "enum": ["error", "warn", "info"]},
+        "status": {"type": "string", "enum": ["pass", "warn", "fail", "skip"]},
+        "weight": {"type": "number", "minimum": 0},
+        "detail": {"type": "string"},
+        "remediation": {"type": "string"},
+        "evidence": {"type": "object"}
+      }
+    }
+  }
+}

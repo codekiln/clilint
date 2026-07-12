@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clilint"
+version = "0.1.0"
+description = "A CLI conformance linter and the reference implementation of the CLI Lint standard."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "codekiln" }]
+keywords = ["cli", "linter", "conformance", "standard", "clig"]
+
+# clilint uses only the Python standard library — no runtime dependencies.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/codekiln/clilint"
+Source = "https://github.com/codekiln/clilint"
+
+[project.scripts]
+clilint = "clilint.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

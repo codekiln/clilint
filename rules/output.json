@@ -1,0 +1,12 @@
+[
+  {
+    "id": "CLI-OUTPUT-001",
+    "category": "output",
+    "title": "Color is disabled when output is not a TTY",
+    "severity": "error",
+    "rationale": "ANSI color codes written to a pipe corrupt data consumed by other programs. Color must be gated on an interactive terminal (and disabled by NO_COLOR).",
+    "remediation": "Emit color only when stdout is a TTY; honor the NO_COLOR environment variable and a --no-color flag.",
+    "source": ["clig.dev: Output", "12 Factor CLI Apps"],
+    "probe": "output"
+  }
+]

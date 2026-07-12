@@ -1,0 +1,17 @@
+# Reports produced by clilint runs
+clilint-report.json
+*.clilint.json
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Build artifacts (language TBD)
+/target/
+/dist/
+/build/
+node_modules/
+__pycache__/
+*.pyc

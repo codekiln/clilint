@@ -6,5 +6,10 @@ minimum_release_age = "1d"
 
 [tools]
 rust = { version = "stable", profile = "default" }
+lefthook = "2.1.9"
 "npm:@fission-ai/openspec" = "1.6.0"
 "npm:rulesync" = "9.6.3"
+
+# Install the repository's Git hooks whenever mise enters this trusted checkout.
+[hooks]
+enter = "lefthook install"

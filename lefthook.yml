@@ -1,0 +1,6 @@
+# Block commits that contain personal or employer identifiers by reusing the
+# global, name-free scan task managed by codekiln/dotfiles.
+pre-commit:
+  commands:
+    identity-guard:
+      run: mise run secrets:scan {staged_files}

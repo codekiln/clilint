@@ -1,11 +1,11 @@
 ## 1. Preserve the prototype
 
 - [x] 1.1 Align the Python prototype's displayed tool and standard versions with 0.0.1 and verify its existing end-to-end tests.
-- [ ] 1.2 Create the reviewed 0.0.1 snapshot commit and annotated `v0.0.1` tag before removing prototype files.
+- [x] 1.2 Create the reviewed 0.0.1 snapshot commit and annotated `v0.0.1` tag before removing prototype files.
 
 ## 2. Establish the project workflow
 
-- [ ] 2.1 Complete `mise.toml` with the Rust and development tools, generate and commit `mise.lock`, and verify a fresh `mise install`.
+- [x] 2.1 Complete `mise.toml` with the Rust and development tools, generate and commit `mise.lock`, and verify a fresh `mise install`.
 - [ ] 2.2 Add executable, described `.mise/tasks/` file tasks for formatting, linting, tests, OpenSpec validation, RuleSync checks, and aggregate CI; add `#USAGE` metadata wherever a task accepts input.
 - [ ] 2.3 Add CI that installs tools through the pinned mise GitHub Action and runs the same aggregate mise task used locally.
 - [ ] 2.4 Add a workflow check that compares each OpenSpec source skill's `generatedBy` metadata with the mise-managed OpenSpec CLI version.

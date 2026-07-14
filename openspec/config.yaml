@@ -1,0 +1,23 @@
+schema: spec-driven
+
+context: |
+  clilint is a Rust CLI framework for testing whether command-line programs conform to a shared standard and to user-authored extension packages.
+  Prefer a small number of top-level folders and typed Rust interfaces over dynamically loaded implementation files.
+  Keep deterministic checks and AI-agent assessments distinguishable in data and reports.
+  Agent Skills live under the repository's top-level skills/ directory and must be installable with the Vercel Skills CLI.
+  Use mise to manage project tools, environment settings, and task execution. Prefer executable file tasks under .mise/tasks/ and run the same tasks locally and in CI.
+  OpenSpec skills are authored in .rulesync/skills/ and generated for supported agents. Load the matching skill before creating or editing an OpenSpec artifact.
+  Use Semantic Versioning and Conventional Emoji Commits. Release work should require no recurring version calculation or manual workflow dispatch.
+  Use plain language and keep requirements observable.
+
+rules:
+  proposal:
+    - Keep each change focused on one intent.
+    - End with a Citations section naming only the garden principles and preferences used by the change.
+  specs:
+    - Give each requirement at least one concrete scenario.
+  design:
+    - Record important alternatives and trade-offs.
+    - End with a Citations section naming only the garden principles and preferences used by the design.
+  tasks:
+    - Include verification with each implementation area.

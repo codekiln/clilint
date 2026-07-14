@@ -1,0 +1,10 @@
+[settings]
+# Keep tool resolution reproducible while allowing deliberate version-range updates.
+lockfile = true
+# Match the user's machine-wide delay for newly published tool versions.
+minimum_release_age = "1d"
+
+[tools]
+rust = { version = "stable", profile = "default" }
+"npm:@fission-ai/openspec" = "1.6.0"
+"npm:rulesync" = "9.6.3"

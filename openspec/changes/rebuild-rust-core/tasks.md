@@ -13,27 +13,27 @@
 
 ## 3. Establish the Rust core
 
-- [ ] 3.1 Create a Rust 0.0.2 binary crate with the agreed source, package, skill, test, and OpenSpec layout.
-- [ ] 3.2 Implement command parsing, target execution with closed standard input and timeouts, and focused unit tests.
-- [ ] 3.3 Define typed observations, deterministic checks, findings, and report data with serialization tests.
-- [ ] 3.4 Implement JSON and human report output and verify stdout, stderr, and exit behavior end to end.
+- [x] 3.1 Create a Rust 0.0.2 binary crate with the agreed source, package, skill, test, and OpenSpec layout.
+- [x] 3.2 Implement command parsing, target execution with closed standard input and timeouts, and focused unit tests.
+- [x] 3.3 Define typed observations, deterministic checks, findings, and report data with serialization tests.
+- [x] 3.4 Implement JSON and human report output and verify stdout, stderr, and exit behavior end to end.
 
 ## 4. Implement conformance packages
 
-- [ ] 4.1 Define and test the versioned TOML package manifest and package-scoped rule identifiers.
-- [ ] 4.2 Create `packages/clilint/clilint.toml` and bundle it into the binary with a parse-consistency test.
-- [ ] 4.3 Implement local extension loading, additive inheritance, and errors for weakening or conflicting rules.
-- [ ] 4.4 Re-express the useful Python rules as supported deterministic checks and verify them against Rust fixtures.
-- [ ] 4.5 Verify deterministic checking succeeds with network access unavailable.
+- [x] 4.1 Define and test the versioned TOML package manifest and package-scoped rule identifiers.
+- [x] 4.2 Create `packages/clilint/clilint.toml` and bundle it into the binary with a parse-consistency test.
+- [x] 4.3 Implement local extension loading, additive inheritance, and errors for weakening or conflicting rules.
+- [x] 4.4 Re-express the useful Python rules as supported deterministic checks and verify them against Rust fixtures.
+- [x] 4.5 Verify deterministic checking succeeds with network access unavailable.
 
 ## 5. Implement AI-agent assessments
 
-- [ ] 5.1 Add the help-quality rule, captured evidence, unassessed result, and required-skill metadata to the global package and report.
-- [ ] 5.2 Define the versioned assessment document and implement validation of rule, result, skill, and evidence digest.
-- [ ] 5.3 Add repeatable `--assessment` input to `clilint check` and verify valid, malformed, and stale assessments.
-- [ ] 5.4 Create `skills/assess-cli-help/SKILL.md` with the clilint evidence-and-assessment workflow.
-- [ ] 5.5 Add contrasting useful-help and superficial-example fixtures and forward-test the skill against both.
-- [ ] 5.6 Verify the Vercel Skills CLI discovers and can install `assess-cli-help` from a local checkout.
+- [x] 5.1 Add the help-quality rule, captured evidence, unassessed result, and required-skill metadata to the global package and report.
+- [x] 5.2 Define the versioned assessment document and implement validation of rule, result, skill, and evidence digest.
+- [x] 5.3 Add repeatable `--assessment` input to `clilint check` and verify valid, malformed, and stale assessments.
+- [x] 5.4 Create `skills/assess-cli-help/SKILL.md` with the clilint evidence-and-assessment workflow.
+- [x] 5.5 Add contrasting useful-help and superficial-example fixtures and forward-test the skill against both.
+- [x] 5.6 Verify the Vercel Skills CLI discovers and can install `assess-cli-help` from a local checkout.
 
 ## 6. Complete the rebuild
 

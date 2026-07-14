@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  --help|-h)
+    cat <<'EOF'
+Run the tool.
+
+Usage: shallow [options]
+
+Options:
+  --format json
+  --no-input
+
+Examples: available later.
+EOF
+    ;;
+  --version|-V)
+    echo "shallow 1.0.0"
+    ;;
+  "")
+    echo "Usage: shallow [options]"
+    ;;
+  *)
+    echo "error: invalid option; try --help" >&2
+    exit 2
+    ;;
+esac

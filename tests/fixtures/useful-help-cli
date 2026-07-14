@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  --help|-h)
+    cat <<'EOF'
+Manage a small address book.
+
+Usage: contacts <command> [options]
+
+Options:
+  --format json       Print machine-readable output
+  --no-input          Never prompt for input
+
+Examples:
+  contacts add Ada --email ada@example.test
+  contacts list --format json
+EOF
+    ;;
+  --version|-V)
+    echo "contacts 1.2.0"
+    ;;
+  "")
+    echo "Usage: contacts <command> [options]"
+    ;;
+  *)
+    echo "error: unrecognized argument '$1'; try --help" >&2
+    exit 2
+    ;;
+esac

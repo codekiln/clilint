@@ -1,0 +1,20 @@
+[package]
+name = "clilint"
+version = "0.0.2"
+edition = "2024"
+rust-version = "1.97"
+description = "A behavioral conformance checker for command-line interfaces"
+license = "MIT"
+repository = "https://github.com/codekiln/clilint"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+toml = "0.9"
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"

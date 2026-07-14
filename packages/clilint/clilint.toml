@@ -1,0 +1,181 @@
+format_version = 1
+
+[package]
+name = "clilint"
+version = "0.0.2"
+
+[[rules]]
+id = "clilint/basics/success-exit"
+title = "A successful invocation exits zero"
+severity = "error"
+evaluation_method = "deterministic"
+[rules.check]
+type = "any-invocation"
+invocations = [
+  { args = ["--help"], assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }] },
+  { args = ["--version"], assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }] },
+]
+
+[[rules]]
+id = "clilint/basics/error-exit"
+title = "Unknown flags exit non-zero"
+severity = "error"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--clilint-nonexistent-flag-zzz"]
+assertions = [{ type = "not-timed-out" }, { type = "exit-non-zero" }]
+
+[[rules]]
+id = "clilint/basics/help-on-stdout"
+title = "Help and primary output go to stdout"
+severity = "error"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--help"]
+assertions = [{ type = "stdout-not-empty" }, { type = "stdout-at-least-stderr" }]
+
+[[rules]]
+id = "clilint/error/on-stderr"
+title = "Error messages go to stderr"
+severity = "error"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--clilint-nonexistent-flag-zzz"]
+assertions = [{ type = "stderr-not-empty" }]
+
+[[rules]]
+id = "clilint/error/names-problem"
+title = "Errors name the problem"
+severity = "warn"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--clilint-nonexistent-flag-zzz"]
+assertions = [{ type = "output-contains-any", values = ["unknown", "unrecognized", "invalid", "no such", "error", "usage", "--clilint-nonexistent-flag-zzz"] }]
+
+[[rules]]
+id = "clilint/error/points-to-help"
+title = "Errors point the user toward help"
+severity = "warn"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--clilint-nonexistent-flag-zzz"]
+assertions = [{ type = "output-contains-any", values = ["--help", "-h", "help", "usage", "try"] }]
+
+[[rules]]
+id = "clilint/help/long-option"
+title = "--help prints help on stdout and exits zero"
+severity = "error"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--help"]
+assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }, { type = "stdout-not-empty" }]
+
+[[rules]]
+id = "clilint/help/short-option"
+title = "-h is a help alias"
+severity = "warn"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["-h"]
+assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }, { type = "stdout-not-empty" }]
+
+[[rules]]
+id = "clilint/help/usage"
+title = "Help includes a usage synopsis"
+severity = "warn"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--help"]
+assertions = [{ type = "stdout-contains-any", values = ["usage", "synopsis"] }]
+
+[[rules]]
+id = "clilint/output/no-ansi-when-piped"
+title = "Color is disabled when output is not a TTY"
+severity = "error"
+evaluation_method = "deterministic"
+[rules.check]
+type = "all-invocations"
+invocations = [
+  { args = ["--help"], assertions = [{ type = "no-ansi" }] },
+  { args = [], assertions = [{ type = "no-ansi" }] },
+  { args = ["--version"], assertions = [{ type = "no-ansi" }] },
+]
+
+[[rules]]
+id = "clilint/robustness/fast-help"
+title = "Help responds within two seconds"
+severity = "warn"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--help"]
+assertions = [{ type = "duration-at-most", milliseconds = 2000.0 }]
+
+[[rules]]
+id = "clilint/robustness/no-args-do-not-hang"
+title = "No-argument invocation does not hang"
+severity = "error"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = []
+assertions = [{ type = "not-timed-out" }]
+
+[[rules]]
+id = "clilint/version/long-option"
+title = "--version prints a version number and exits zero"
+severity = "warn"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--version"]
+assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }, { type = "version-number" }]
+
+[[rules]]
+id = "clilint/version/short-option"
+title = "-V is a version alias"
+severity = "info"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["-V"]
+assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }, { type = "version-number" }]
+
+[[rules]]
+id = "clilint/agent/structured-output"
+title = "Help advertises a machine-readable output mode"
+severity = "warn"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--help"]
+assertions = [{ type = "stdout-contains-any", values = ["--json", "--format", "--plain", "--output", "-o "] }]
+
+[[rules]]
+id = "clilint/agent/non-interactive"
+title = "Help advertises a non-interactive mode"
+severity = "warn"
+evaluation_method = "deterministic"
+[rules.check]
+type = "invocation"
+args = ["--help"]
+assertions = [{ type = "stdout-contains-any", values = ["--no-input", "--non-interactive", "--yes", "--force", "--batch", "-y"] }]
+
+[[rules]]
+id = "clilint/help/useful-example"
+title = "Help teaches a likely task with a useful example"
+severity = "warn"
+evaluation_method = "ai-agent"
+[rules.skill]
+name = "assess-cli-help"
+version = "1.0.0"
+[rules.evidence]
+args = ["--help"]

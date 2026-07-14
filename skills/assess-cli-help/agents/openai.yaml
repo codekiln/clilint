@@ -1,0 +1,4 @@
+interface:
+  display_name: "Assess CLI Help"
+  short_description: "Judge whether CLI help teaches a useful task"
+  default_prompt: "Use $assess-cli-help to assess the pending help-quality evidence in a clilint report."

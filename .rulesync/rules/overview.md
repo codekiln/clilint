@@ -10,6 +10,9 @@ Use OpenSpec for planned changes. Before creating or editing OpenSpec artifacts,
 matching OpenSpec skill from `.rulesync/skills/` and follow the artifact instructions
 returned by the OpenSpec CLI. Do not invent the document format from memory.
 
+When archiving an OpenSpec change, always run the spec-sync workflow before moving the
+change into the archive. Do not offer archive without syncing as a routine option.
+
 Project-level AI configuration is generated from `.rulesync/`. Edit the RuleSync source,
 then run `rulesync generate`; do not hand-edit generated tool files.
 

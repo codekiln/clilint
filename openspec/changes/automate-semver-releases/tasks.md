@@ -21,7 +21,7 @@
 
 - [x] 4.1 Choose the required 0.0.2 release targets and document the target decision in the design.
 - [x] 4.2 Generate and commit the dist release workflow without hand-editing its build matrix.
-- [ ] 4.3 Run dist's supported pull request or dry-run checks and verify archives and SHA-256 checksums for every target.
+- [x] 4.3 Run dist's supported pull request or dry-run checks and verify archives and SHA-256 checksums for every target.
 - [x] 4.4 Verify release-plz owns versioning and tags while dist alone creates and completes the GitHub Release.
 
 ## 5. Exercise the complete release path

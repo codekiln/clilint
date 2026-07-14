@@ -2,4 +2,7 @@
 #MISE description="Check that generated agent configuration matches RuleSync source"
 set -euo pipefail
 
+# Generated agent files are intentionally ignored, so a clean CI checkout must
+# materialize them before checking that generation is idempotent.
+rulesync generate
 rulesync generate --check

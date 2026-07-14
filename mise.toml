@@ -5,7 +5,7 @@ lockfile = true
 minimum_release_age = "1d"
 
 [tools]
-rust = { version = "1.97.0", profile = "default" }
+rust = { version = "1.97.0", profile = "default", components = ["rustfmt", "clippy"] }
 lefthook = "2.1.9"
 "npm:@fission-ai/openspec" = "1.6.0"
 "npm:rulesync" = "9.6.3"

@@ -1,150 +1,114 @@
 # clilint
 
-**A CLI conformance linter.** Point `clilint` at a command-line tool and get a reproducible
-conformance score plus machine-readable, actionable findings — so both humans and LLM coding agents
-can iterate a CLI toward a shared standard.
+Clilint checks observable command-line behavior against a versioned conformance package. The 0.0.2 implementation is a Rust binary that runs package-declared invocations, captures evidence, evaluates deterministic rules, and exposes pending AI-agent assessments without combining the two methods into one measurement.
 
-> This CLI scores 84 under CLI Lint 0.1.
+## Quick start
 
-`clilint` is early-stage but working. This repository holds both the **CLI Lint** standard and its
-reference linter — a zero-dependency Python 3.10+ tool that runs behavioral probes against a target
-executable.
+Install the project tools and build the binary:
 
-## Quickstart
-
-Run it straight from a checkout — no install, no dependencies beyond Python 3.10+:
-
-```bash
-git clone https://github.com/codekiln/clilint
-cd clilint
-
-./clilint check ./fixtures/good-cli/greet     # a conformant example → 100/100
-./clilint check ./fixtures/bad-cli/badtool    # a broken example → low score, exit 1
-./clilint check ./clilint                      # clilint lints itself
+```sh
+mise install
+cargo build
 ```
 
-`clilint check` exits non-zero when any rule fails, so it works as a CI gate.
+Check one of the included fixtures:
 
-## What it is
-
-Most CLIs are snowflakes: each invents its own flags, help layout, error format, and output modes.
-That makes every CLI harder to learn — for people and for agents. **CLI Lint** turns established
-command-line best practice into explicit, versioned, testable criteria, and `clilint` measures a
-real executable against them.
-
-The prose standard supports the tool rather than being the only deliverable: the operative promise
-is *generate or modify a CLI, run this tool, and receive a reproducible conformance score with
-actionable findings.*
-
-## Vocabulary
-
-- **CLI Lint** — the standard (the full standard-and-tooling project).
-- **CLI Lint rules** — the individual, versioned criteria, identified by a `CLI-` prefix.
-- **CLI Lint score** — a 0–100 conformance score for a given tool under a profile.
-- **CLI Lint conformance** — meeting the rules for a chosen profile at a chosen version.
-- **`clilint`** — the reference command.
-
-## Commands
-
-```text
-clilint check ./my-cli      # run the rules against an executable, print findings
-clilint score ./my-cli      # print just the conformance score
-clilint explain CLI-OUTPUT-003   # explain a rule and how to satisfy it
+```sh
+cargo run -- check ./tests/fixtures/useful-help-cli
+cargo run -- check ./tests/fixtures/useful-help-cli --format json
 ```
 
-## Example
+Human output shows each finding and separate deterministic and AI-agent summaries. JSON output is one versioned report document on stdout. A deterministic or attached AI-agent failure exits 1; invalid input or package data exits 2 with a diagnostic on stderr.
 
-```text
-$ clilint check ./target/debug/mytool
+## Conformance packages
 
-CLI Lint 0.1
-Profile: generated-cli
+The embedded global package is defined in [`packages/clilint/clilint.toml`](packages/clilint/clilint.toml). It contains package-scoped rule identifiers and typed invocations and assertions. Checks capture:
 
-Score: 84/100
+- arguments and environment changes;
+- exit status and timeout state;
+- duration, stdout, and stderr;
+- ANSI escape presence.
 
-CLI-HELP-002       pass
-CLI-OUTPUT-004     fail    No stable structured-output mode
-CLI-ERROR-003      fail    Error output lacks a machine-readable code
-CLI-SAFETY-006     pass
-CLI-AGENT-002      warn    Help output does not expose side effects
+Target stdin receives end-of-file unless an invocation explicitly supplies input. Deterministic checking does not fetch packages or use network services.
+
+A local TOML package can extend `clilint`:
+
+```toml
+format_version = 1
+extends = "clilint"
+
+[package]
+name = "team"
+version = "1.0.0"
+
+[[rules]]
+id = "team/help/team-option"
+title = "Help describes the team option"
+severity = "warn"
+evaluation_method = "deterministic"
+
+[rules.check]
+type = "invocation"
+args = ["--help"]
+assertions = [{ type = "stdout-contains-any", values = ["--team"] }]
 ```
 
-## The workflow
+Pass it to the check command with `--package ./team.toml`. Extensions add rules or strengthen inherited severity; attempts to exclude, replace, or weaken inherited rules are rejected before the target runs.
 
-`clilint` is built for a repair loop that a human or an agent can drive:
+## Help assessment skill
 
-```text
-generate or modify a CLI
-        ↓
-clilint exercises the executable
-        ↓
-machine-readable findings and score
-        ↓
-repair the violations
-        ↓
-clilint verifies conformance
+The global package includes `clilint/help/useful-example`, an AI-agent rule for whether help teaches a likely task with a useful example. Without an assessment, its report result is `unassessed` and includes captured help, a required skill identity, and an evidence digest.
+
+List and install the repository skill with the mise-managed Vercel Skills CLI:
+
+```sh
+skills add . --list
+skills add . --skill assess-cli-help --agent codex -y --copy
 ```
 
-```bash
-clilint check ./mytool \
-  --profile generated-cli \
-  --format json \
-  --output clilint-report.json
+The installed `assess-cli-help` skill runs clilint, judges only the captured help, writes a versioned assessment document, and asks clilint to validate and attach it. It does not execute examples found in help output.
+
+Assessment documents can also be supplied directly and repeatedly:
+
+```sh
+cargo run -- check ./tests/fixtures/useful-help-cli \
+  --assessment ./tests/fixtures/useful-help-assessment.toml \
+  --format json
 ```
 
-The JSON report contains stable rule identifiers, evidence, severity, score impact, and remediation
-instructions, so an agent can iterate without having to interpret prose diagnostics.
+Clilint validates the document format, rule identifier, result, skill name and version, and evidence digest. A digest from changed evidence is rejected.
 
-## Conformance profiles
+## Development
 
-The initial profile is `generated-cli` (a CLI newly written or modified, often by an agent). The
-resulting CLI must remain good for humans — the agent is the implementer and evaluator, not the sole
-user. Additional profiles (for example `modern-cli`) can raise or relax rules for different contexts.
+Mise pins Rust and the project development tools in `mise.lock`. Project automation uses executable files under `.mise/tasks/`:
+
+```sh
+mise tasks
+mise run format
+mise run lint
+mise run test
+mise run openspec:validate
+mise run openspec:check-skill-versions
+mise run rulesync:check
+mise run ci
+```
+
+`mise run ci` is the same aggregate entry point used by GitHub Actions. It checks Rust formatting, runs Clippy with warnings denied, runs all tests, validates OpenSpec strictly, compares OpenSpec skill metadata with the managed CLI version, and checks generated RuleSync files.
 
 ## Repository layout
 
 ```text
-clilint/
-├── spec/            # Normative CLI conformance standard (prose)
-├── rules/           # Machine-readable rule definitions
-├── src/             # Reference linter
-├── probes/          # Behavioral CLI tests
-├── schemas/         # Result and manifest schemas
-├── prompts/         # Instructions for LLM coding agents
-├── fixtures/        # Conformant and nonconformant example CLIs
-└── integrations/    # GitHub Actions, pre-commit, agent skills
+src/                         Rust library and binary
+packages/clilint/            Embedded global package
+skills/assess-cli-help/      Installable help assessment skill
+tests/fixtures/              Behavioral and skill fixtures
+openspec/                    Project specifications and changes
+.rulesync/                   Source for generated agent configuration
+.mise/tasks/                 Local and CI task entry points
 ```
 
-## How it works
-
-1. **Rules** (`rules/*.json`) declare each `CLI-` criterion: category, severity, score weight, rationale, and remediation.
-2. **Probes** (`probes/*.py`) run the target executable — `--help`, `-h`, `--version`, an invalid flag, no args — and turn what they observe into findings against those rules.
-3. The engine (`src/clilint/`) assembles findings into a scored **CLI Lint Report** (`schemas/report.schema.json`), in human, `--plain`, or `--json` form.
-
-Adding a rule means adding an entry to a `rules/*.json` file and teaching a probe to emit a finding for it.
-
-## Development
-
-```bash
-python -m unittest discover -s tests      # end-to-end tests against the fixtures
-```
-
-`clilint` uses only the Python standard library. The supported way to run it is from a repository
-checkout (`./clilint` or `python -m clilint` with `src/` on `PYTHONPATH`); a `pyproject.toml` is
-included for packaging.
-
-## Sources
-
-CLI Lint distills and makes testable the best practices described by:
-
-- [Command Line Interface Guidelines (clig.dev)](https://clig.dev/) — the primary source.
-- [12 Factor CLI Apps](https://jdxcode.medium.com/12-factor-cli-apps-dd3c227a0e46) by Jeff Dickey.
-
-Related standards and conventions it draws on include the
-[POSIX Utility Conventions](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html),
-the [GNU Coding Standards](https://www.gnu.org/prep/standards/html_node/Program-Behavior.html), and
-the [Heroku CLI Style Guide](https://devcenter.heroku.com/articles/cli-style-guide).
+The Python 0.0.1 prototype remains available at tag `v0.0.1`. See [`docs/prototype-comparison.md`](docs/prototype-comparison.md) for the retained rule mapping and public behavior changes.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE)

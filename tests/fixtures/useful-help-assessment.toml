@@ -1,0 +1,10 @@
+format_version = 1
+rule = "clilint/help/useful-example"
+result = "pass"
+explanation = "The help explains the address-book purpose and shows how to add and list contacts."
+evidence_digest = "sha256:d3fa71c8f0721feb1f839a23fc8a34507e3c264a22e26f1c325248275cb4b34b"
+assessor = "fixture"
+
+[skill]
+name = "assess-cli-help"
+version = "1.0.0"

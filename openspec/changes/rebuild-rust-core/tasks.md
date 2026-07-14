@@ -37,7 +37,7 @@
 
 ## 6. Complete the rebuild
 
-- [ ] 6.1 Compare the Rust behavior and retained standard content with the Python prototype and record intentional differences.
-- [ ] 6.2 Remove superseded Python, probe, prompt, schema, fixture, integration, and root spec files after their retained content has a destination.
-- [ ] 6.3 Run the aggregate mise CI task covering formatting, Clippy with warnings denied, unit tests, integration tests, fixture tests, OpenSpec strict validation, and RuleSync checks.
-- [ ] 6.4 Update the project overview for the Rust package, mise task, and skill workflow and verify every documented command.
+- [x] 6.1 Compare the Rust behavior and retained standard content with the Python prototype and record intentional differences.
+- [x] 6.2 Remove superseded Python, probe, prompt, schema, fixture, integration, and root spec files after their retained content has a destination.
+- [x] 6.3 Run the aggregate mise CI task covering formatting, Clippy with warnings denied, unit tests, integration tests, fixture tests, OpenSpec strict validation, and RuleSync checks.
+- [x] 6.4 Update the project overview for the Rust package, mise task, and skill workflow and verify every documented command.

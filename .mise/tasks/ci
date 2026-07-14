@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#MISE description="Run the checks used by continuous integration"
+set -euo pipefail
+
+mise run format
+mise run lint
+mise run test
+mise run openspec:validate
+mise run openspec:check-skill-versions
+mise run rulesync:check

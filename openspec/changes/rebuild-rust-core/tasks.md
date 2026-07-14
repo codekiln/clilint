@@ -6,10 +6,10 @@
 ## 2. Establish the project workflow
 
 - [x] 2.1 Complete `mise.toml` with the Rust and development tools, generate and commit `mise.lock`, and verify a fresh `mise install`.
-- [ ] 2.2 Add executable, described `.mise/tasks/` file tasks for formatting, linting, tests, OpenSpec validation, RuleSync checks, and aggregate CI; add `#USAGE` metadata wherever a task accepts input.
-- [ ] 2.3 Add CI that installs tools through the pinned mise GitHub Action and runs the same aggregate mise task used locally.
-- [ ] 2.4 Add a workflow check that compares each OpenSpec source skill's `generatedBy` metadata with the mise-managed OpenSpec CLI version.
-- [ ] 2.5 Verify `rulesync generate --check` reproduces the project-local OpenSpec skills and agent rules from `.rulesync/` source.
+- [x] 2.2 Add executable, described `.mise/tasks/` file tasks for formatting, linting, tests, OpenSpec validation, RuleSync checks, and aggregate CI; add `#USAGE` metadata wherever a task accepts input.
+- [x] 2.3 Add CI that installs tools through the pinned mise GitHub Action and runs the same aggregate mise task used locally.
+- [x] 2.4 Add a workflow check that compares each OpenSpec source skill's `generatedBy` metadata with the mise-managed OpenSpec CLI version.
+- [x] 2.5 Verify `rulesync generate --check` reproduces the project-local OpenSpec skills and agent rules from `.rulesync/` source.
 
 ## 3. Establish the Rust core
 

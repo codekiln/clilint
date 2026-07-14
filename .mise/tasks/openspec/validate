@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Validate all OpenSpec changes and specs strictly"
+set -euo pipefail
+
+openspec validate --all --strict

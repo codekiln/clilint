@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run all Rust tests"
+set -euo pipefail
+
+cargo test --all-targets --all-features

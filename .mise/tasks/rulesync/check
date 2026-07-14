@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Check that generated agent configuration matches RuleSync source"
+set -euo pipefail
+
+rulesync generate --check

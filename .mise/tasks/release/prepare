@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Create or update the release pull request"
+set -euo pipefail
+
+config=$(mise run release:config)
+release-plz release-pr --config "$config" --output json

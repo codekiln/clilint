@@ -10,6 +10,8 @@ lefthook = "2.1.9"
 "npm:@fission-ai/openspec" = "1.6.0"
 "npm:rulesync" = "9.6.3"
 "npm:skills" = "1.5.16"
+release-plz = "0.3.159"
+cargo-dist = "0.32.0"
 
 # Install the repository's Git hooks whenever mise enters this trusted checkout.
 [hooks]

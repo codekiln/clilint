@@ -35,7 +35,7 @@ Alternative considered: release labels or per-pull-request change files. Both as
 
 ### Use release-plz for version preparation and tags
 
-Release-plz will run on changes to the primary branch, analyze the Conventional Emoji Commit history with custom increment patterns, and create or update one release pull request. Its configuration will use Git-only mode initially, keep tag creation enabled, and disable GitHub Release creation so distribution has one owner.
+Release-plz will run on changes to the primary branch, analyze the Conventional Emoji Commit history with custom increment patterns, and create or update one release pull request. Its configuration will use Git-only mode, keep tag creation enabled, and disable GitHub Release creation so distribution has one owner. Because release-plz treats the leading emoji as a non-conventional prefix, the release tasks select a pre-1.0 or post-1.0 configuration from the current package major version. This preserves patch feature releases during initial development and minor feature releases after 1.0 without changing the pull request title format.
 
 The release workflow will read release-plz's pull request output and request squash auto-merge for that pull request. Required CI checks remain the merge gate. When the release pull request merges, release-plz creates the version tag.
 
@@ -53,13 +53,13 @@ Alternative considered: a personal access token. A personal token is simpler to 
 
 Dist will generate the tag-triggered GitHub Actions workflow, plan builds for configured targets, create archives and checksums, and create the GitHub Release. Release-plz will not create the GitHub Release.
 
-The initial target list will be chosen during setup from the platforms dist supports cleanly for this dependency set. Pull request CI will validate the generated workflow and run the normal Rust checks.
+The initial target list is Apple Silicon macOS, Intel macOS, x86-64 Linux GNU, and x86-64 Windows MSVC. These cover the common desktop and server environments using dist's standard GitHub-hosted runners. Pull request CI validates the generated workflow and builds downloadable test artifacts. A dist pre-publish job runs the normal Rust and project checks before the GitHub Release can be completed.
 
 Alternative considered: copy and simplify the langstar matrix. A custom matrix would return ownership of cross-platform packaging details to this repository.
 
 ### Keep the automation in two workflows
 
-One CI workflow will validate pull requests. One release workflow will run release-plz on the primary branch and use the dist-generated release workflow on tags. If dist requires its generated workflow to remain separate, its file counts as generated configuration and is updated through dist rather than edited by hand.
+One hand-maintained CI workflow will validate pull requests, and one hand-maintained release-plz workflow will prepare versions and tags from the primary branch. Dist owns its separate generated tag workflow, which is updated through dist rather than edited by hand.
 
 Alternative considered: separate prepare, tag, build, and publish workflows. More event boundaries make permissions, failure recovery, and troubleshooting harder to follow.
 
@@ -82,15 +82,13 @@ Alternative considered: separate prepare, tag, build, and publish workflows. Mor
 5. Enable automatic merge and verify that release pull request CI is triggered.
 6. Configure dist, select supported targets, and commit its generated workflow.
 7. Run a dry release using a prerelease tag or dist's supported dry-run path.
-8. Enable tag creation and use the merged 0.0.2 release pull request for the first complete automated release.
+8. Enable tag creation and use the next merged release pull request for the first complete automated release.
 
 Rollback consists of disabling the release workflow and auto-merge. Existing tags and published GitHub Releases are immutable historical records and are not removed automatically.
 
 ## Open Questions
 
-- Which operating system and architecture targets should be required for 0.0.2?
 - Should successful releases also publish the binary to Homebrew or another installer channel after GitHub Releases are stable?
-- Does the repository's current GitHub plan permit the desired protected branch, required check, and auto-merge settings?
 
 ## References
 

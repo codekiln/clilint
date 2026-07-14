@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run release impact and distribution configuration checks"
+set -euo pipefail
+
+mise run release:impact-test
+mise run dist:check

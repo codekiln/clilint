@@ -1,6 +1,6 @@
 ## 1. Preserve the prototype
 
-- [ ] 1.1 Align the Python prototype's displayed tool and standard versions with 0.0.1 and verify its existing end-to-end tests.
+- [x] 1.1 Align the Python prototype's displayed tool and standard versions with 0.0.1 and verify its existing end-to-end tests.
 - [ ] 1.2 Create the reviewed 0.0.1 snapshot commit and annotated `v0.0.1` tag before removing prototype files.
 
 ## 2. Establish the project workflow

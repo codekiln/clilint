@@ -5,6 +5,8 @@ set -euo pipefail
 mise run format
 mise run lint
 mise run test
+mise run pr:title-test
+mise run build:release
 mise run openspec:validate
 mise run openspec:check-skill-versions
 mise run rulesync:check

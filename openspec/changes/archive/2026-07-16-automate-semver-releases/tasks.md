@@ -13,9 +13,9 @@
 
 ## 3. Configure workflow credentials
 
-- [ ] 3.1 Create a repository-scoped GitHub App with only the contents and pull-request permissions required by the workflows.
-- [ ] 3.2 Store the App ID and private key as repository secrets and generate short-lived tokens in the release workflow.
-- [ ] 3.3 Verify a bot-created release pull request triggers required CI and a bot-created test tag triggers its workflow.
+- [x] 3.1 Create a repository-scoped GitHub App with only the contents and pull-request permissions required by the workflows.
+- [x] 3.2 Store the App ID and private key as repository secrets and generate short-lived tokens in the release workflow.
+- [x] 3.3 Verify a bot-created release pull request triggers required CI and a bot-created test tag triggers its workflow.
 
 ## 4. Configure binary distribution
 
@@ -26,6 +26,6 @@
 
 ## 5. Exercise the complete release path
 
-- [ ] 5.1 Test that a failed required check leaves the release pull request open and publishes no tag or completed release.
-- [ ] 5.2 Test that a successful releasable pull request leads to an automatically merged release pull request, matching tag, and checksummed GitHub Release without manual dispatch.
+- [x] 5.1 Test that a failed required check leaves the release pull request open and publishes no tag or completed release.
+- [x] 5.2 Test that a successful releasable pull request leads to an automatically merged release pull request, matching tag, and checksummed GitHub Release without manual dispatch.
 - [x] 5.3 Run the aggregate mise CI task, strict OpenSpec validation, and record the one-time repository setup needed to keep later releases automatic.

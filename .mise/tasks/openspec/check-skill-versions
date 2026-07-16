@@ -18,7 +18,7 @@ while IFS= read -r -d '' skill; do
     echo "$skill: generatedBy $generated_by does not match OpenSpec $cli_version" >&2
     failed=1
   fi
-done < <(find .rulesync/skills -mindepth 2 -maxdepth 2 -name SKILL.md -print0)
+done < <(find .rulesync/skills -mindepth 2 -maxdepth 2 -path '*/openspec-*/SKILL.md' -print0)
 
 if [[ "$skill_count" -eq 0 ]]; then
   echo ".rulesync/skills: no OpenSpec source skills found" >&2

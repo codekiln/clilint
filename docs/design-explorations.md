@@ -4,7 +4,10 @@
 
 ## AI-judged checks without required agent skills
 
-A rule is a testable expectation about how a command-line program should behave. A mechanical check computes the rule's result from captured evidence without asking an AI to make a judgment. A judgment-based check applies a written rubric to the evidence and may need an AI agent to decide the result.
+A rule is a testable expectation about how a command-line program should behave. There are two types of rules:
+
+1. **Mechanical check.** Clilint computes the result from captured evidence without asking an AI to make a judgment. For example, a mechanical check can require `--help` to finish, exit successfully, and write help text to standard output.
+2. **Judgment-based check.** An AI agent applies a written rubric to captured evidence. The rubric defines the evidence to consider and what each possible result means. For example, a judgment-based check can ask whether help teaches a likely task with a useful example.
 
 The current prototype assigns one Agent Skill to each judgment-based rule. For example, the [`assess-cli-help` skill](../skills/assess-cli-help/SKILL.md) tells an agent to run Clilint, judge the captured help, write an assessment document, and run Clilint again to validate and attach the result. This proves that evidence can be bound to a judgment, but it is not necessarily the intended long-term design.
 
@@ -26,7 +29,7 @@ agent or person
       |
       |  clilint check <target>
       v
-Clilint runs declared commands and reports repeatable results
+Clilint runs declared commands and reports mechanical results
       |
       |  self-contained assessment job:
       |  question + criteria + evidence + response schema

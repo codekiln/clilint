@@ -4,7 +4,7 @@
 
 ## AI-judged checks without required agent skills
 
-A judgment-based check is a check whose result depends on interpreting captured evidence against written criteria. Unlike a repeatable check for an exit code or exact text, it may need an AI agent to decide whether the evidence passes.
+A rule is a testable expectation about how a command-line program should behave. A mechanical check computes the rule's result from captured evidence without asking an AI to make a judgment. A judgment-based check applies a written rubric to the evidence and may need an AI agent to decide the result.
 
 The current prototype assigns one Agent Skill to each judgment-based rule. For example, the [`assess-cli-help` skill](../skills/assess-cli-help/SKILL.md) tells an agent to run Clilint, judge the captured help, write an assessment document, and run Clilint again to validate and attach the result. This proves that evidence can be bound to a judgment, but it is not necessarily the intended long-term design.
 
@@ -74,6 +74,45 @@ A possible direction is to treat the first model as the baseline, allow the seco
 - How should Clilint identify the model, agent, rubric, and package versions that contributed to a result?
 - What should happen when two agents disagree about the same evidence?
 - How can the exchange remain useful in local terminals, automated CI, and agent harnesses without favoring one provider?
+
+## Learning packages from reference tools
+
+One possible package-authoring workflow would learn expectations from command-line tools that already provide a good experience. The aim would not be to copy their code. It would be to capture what makes their interfaces feel consistent and turn those observations into reusable tests.
+
+```text
+one or more reference tools
+            |
+            |  run safe, representative commands
+            v
+captured help, errors, output, exit behavior, and interaction patterns
+            |
+            |  AI proposes expectations and supporting evidence
+            v
+human reviews what is intentional, accidental, or still uncertain
+            |
+            v
+package of mechanical checks and judgment-based rubrics
+            |
+            v
+new tools can be tested against the chosen expectations
+```
+
+This could let a person preserve the experience of a trusted family of tools, then ask a person or AI to build a new tool that follows the same expectations. “Feels like the reference tools” could cover help organization, command and option naming, error messages, output formats, exit behavior, non-interactive use, and documentation discovery.
+
+The authoring process should not silently turn every observed detail into a rule. A useful proposal would distinguish:
+
+- **observed behavior:** what the reference tool did during a captured interaction;
+- **inferred expectation:** the pattern an AI believes the behavior expresses; and
+- **chosen preference:** an expectation that a person reviewed and accepted into a package.
+
+Several questions remain open:
+
+- How many examples are needed before a repeated behavior should be proposed as a shared expectation?
+- How should the authoring workflow handle reference tools that disagree?
+- Which commands can be exercised safely when discovering behavior?
+- How can an AI propose a rubric that is specific enough to produce useful, consistent judgments?
+- Should a generated package preserve links to the observations that motivated each rule?
+- How can a package reproduce the strengths of a tool family without preserving its accidental quirks?
 
 ## A name that survives speech and search
 

@@ -81,7 +81,6 @@ Clilint also captures help text for an optional AI assessment of whether the hel
 - [Run and attach AI assessments](docs/ai-assessments.md)
 - [Read the project direction](docs/vision.md)
 - [Contribute to Clilint](CONTRIBUTING.md)
-- [Compare the Rust implementation with the Python prototype](docs/prototype-comparison.md)
 
 ## License
 

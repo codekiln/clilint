@@ -27,3 +27,5 @@ The exact interface is not settled. Open questions include the options accepted 
 Packages should make preferences portable between projects. A package could become part of a request to build a command-line tool: given these expectations, create a tool for a particular job and show that it conforms to them.
 
 That model requires clear package composition, stable rule identities, evidence that another tool can inspect, and honest separation between repeatable checks and judgments that need an AI assessment. These are goals for the project rather than promises of the current release.
+
+The operational design for AI assessments and even the project name remain unsettled. [Design explorations](design-explorations.md) record candidate approaches and open questions without treating them as requirements.

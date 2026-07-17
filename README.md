@@ -4,9 +4,11 @@
 [![CI](https://github.com/codekiln/clilint/actions/workflows/ci.yml/badge.svg)](https://github.com/codekiln/clilint/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Clilint checks whether a command-line program behaves in ways that people and automation can rely on. It runs the program's help, version, error, and no-argument paths, then reports problems such as a hanging command, help on the wrong output stream, or an error that does not explain what went wrong.
+Clilint lets people express reusable packages of testable expectations for command-line programs, so builders can state a standard once and check tools against it. Its built-in package is intended to grow into an opinionated superset of the [Command Line Interface Guidelines](https://clig.dev/): automate as many of those guidelines as possible, then add sensible defaults for newer uses such as agent-readable help.
 
-Clilint is for people who build command-line tools and teams that want those tools to follow shared rules. It checks the program's behavior, so it works across programming languages and frameworks. The built-in rules provide a starting point, and local extension packages can add project-specific checks. The report labels repeatable checks and optional AI judgments separately, so readers know which method produced each finding.
+The current release runs common help, version, error, and no-argument commands. Its built-in checks cover help and version options, exit codes, error messages, output for scripts, and color codes in piped output. A local extension package can add expectations for a project or team. Optional AI assessments handle questions that need judgment, and Clilint reports those results separately from repeatable checks.
+
+Clilint is for people who build command-line tools and teams that want those tools to follow shared expectations. The longer-term [project direction](docs/vision.md) includes reusable preference packages and command-line help that people and agents can explore without leaving the terminal.
 
 ## Project status
 
@@ -77,6 +79,7 @@ Clilint also captures help text for an optional AI assessment of whether the hel
 - [Install Clilint on each supported system](docs/installation.md)
 - [Add project-specific checks with an extension package](docs/packages.md)
 - [Run and attach AI assessments](docs/ai-assessments.md)
+- [Read the project direction](docs/vision.md)
 - [Contribute to Clilint](CONTRIBUTING.md)
 - [Compare the Rust implementation with the Python prototype](docs/prototype-comparison.md)
 

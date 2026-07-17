@@ -1,6 +1,6 @@
 # Project direction
 
-Clilint aims to make expectations about command-line programs reusable and testable. A package should describe how a command is expected to behave, and Clilint should run the command and report where its behavior matches or departs from those expectations.
+A Clilint package is a reusable collection of rules for how command-line programs should behave. Clilint should run a command and report where its behavior matches or departs from the package's rules.
 
 This direction is broader than one fixed checklist. A person or team should be able to choose a package of expectations when designing, generating, reviewing, or testing a command-line program.
 

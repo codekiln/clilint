@@ -1,114 +1,87 @@
-# clilint
+# Clilint
 
-Clilint checks observable command-line behavior against a versioned conformance package. The 0.0.2 implementation is a Rust binary that runs package-declared invocations, captures evidence, evaluates deterministic rules, and exposes pending AI-agent assessments without combining the two methods into one measurement.
+[![GitHub Release](https://img.shields.io/github/v/release/codekiln/clilint)](https://github.com/codekiln/clilint/releases/latest)
+[![CI](https://github.com/codekiln/clilint/actions/workflows/ci.yml/badge.svg)](https://github.com/codekiln/clilint/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Quick start
+Clilint lets people express reusable packages of testable expectations for command-line programs, so builders can state a standard once and check tools against it. Its built-in package is intended to grow into an opinionated superset of the [Command Line Interface Guidelines](https://clig.dev/): automate as many of those guidelines as possible, then add sensible defaults for newer uses such as agent-readable help.
 
-Install the project tools and build the binary:
+The current release runs common help, version, error, and no-argument commands. Its built-in checks cover help and version options, exit codes, error messages, output for scripts, and color codes in piped output. A local extension package can add expectations for a project or team. Optional AI assessments handle questions that need judgment, and Clilint reports those results separately from repeatable checks.
 
-```sh
-mise install
-cargo build
-```
+Clilint is for people who build command-line tools and teams that want those tools to follow shared expectations. The longer-term [project direction](docs/vision.md) includes reusable preference packages and command-line help that people and agents can explore without leaving the terminal.
 
-Check one of the included fixtures:
+## Project status
 
-```sh
-cargo run -- check ./tests/fixtures/useful-help-cli
-cargo run -- check ./tests/fixtures/useful-help-cli --format json
-```
+Clilint is an early-stage `0.0.x` project. Command behavior, package files, and report formats may change before version 1.0.
 
-Human output shows each finding and separate deterministic and AI-agent summaries. JSON output is one versioned report document on stdout. A deterministic or attached AI-agent failure exits 1; invalid input or package data exits 2 with a diagnostic on stderr.
+Current releases support Apple silicon macOS, Intel macOS, x86-64 Linux, and x86-64 Windows. [GitHub Releases](https://github.com/codekiln/clilint/releases/latest) publishes the downloads and their SHA-256 checksums.
 
-## Conformance packages
+The [continuous integration workflow](https://github.com/codekiln/clilint/actions/workflows/ci.yml) runs the repository checks. [@codekiln](https://github.com/codekiln) maintains the project. Use [GitHub Issues](https://github.com/codekiln/clilint/issues) for help and bug reports.
 
-The embedded global package is defined in [`packages/clilint/clilint.toml`](packages/clilint/clilint.toml). It contains package-scoped rule identifiers and typed invocations and assertions. Checks capture:
+## Install
 
-- arguments and environment changes;
-- exit status and timeout state;
-- duration, stdout, and stderr;
-- ANSI escape presence.
-
-Target stdin receives end-of-file unless an invocation explicitly supplies input. Deterministic checking does not fetch packages or use network services.
-
-A local TOML package can extend `clilint`:
-
-```toml
-format_version = 1
-extends = "clilint"
-
-[package]
-name = "team"
-version = "1.0.0"
-
-[[rules]]
-id = "team/help/team-option"
-title = "Help describes the team option"
-severity = "warn"
-evaluation_method = "deterministic"
-
-[rules.check]
-type = "invocation"
-args = ["--help"]
-assertions = [{ type = "stdout-contains-any", values = ["--team"] }]
-```
-
-Pass it to the check command with `--package ./team.toml`. Extensions add rules or strengthen inherited severity; attempts to exclude, replace, or weaken inherited rules are rejected before the target runs.
-
-## Help assessment skill
-
-The global package includes `clilint/help/useful-example`, an AI-agent rule for whether help teaches a likely task with a useful example. Without an assessment, its report result is `unassessed` and includes captured help, a required skill identity, and an evidence digest.
-
-List and install the repository skill with the mise-managed Vercel Skills CLI:
+With [mise](https://mise.jdx.dev/):
 
 ```sh
-skills add . --list
-skills add . --skill assess-cli-help --agent codex -y --copy
+mise use -g github:codekiln/clilint
 ```
 
-The installed `assess-cli-help` skill runs clilint, judges only the captured help, writes a versioned assessment document, and asks clilint to validate and attach it. It does not execute examples found in help output.
+See [Installation](docs/installation.md) for every supported download, checksum verification, PATH setup, and troubleshooting.
 
-Assessment documents can also be supplied directly and repeatedly:
+## Check a command
+
+Start by asking Clilint to check itself:
 
 ```sh
-cargo run -- check ./tests/fixtures/useful-help-cli \
-  --assessment ./tests/fixtures/useful-help-assessment.toml \
-  --format json
+clilint check clilint
 ```
 
-Clilint validates the document format, rule identifier, result, skill name and version, and evidence digest. A digest from changed evidence is rejected.
-
-## Development
-
-Mise pins Rust and the project development tools in `mise.lock`. Project automation uses executable files under `.mise/tasks/`:
-
-```sh
-mise tasks
-mise run format
-mise run lint
-mise run test
-mise run openspec:validate
-mise run openspec:check-skill-versions
-mise run rulesync:check
-mise run ci
-```
-
-`mise run ci` is the same aggregate entry point used by GitHub Actions. It checks Rust formatting, runs Clippy with warnings denied, runs all tests, validates OpenSpec strictly, compares OpenSpec skill metadata with the managed CLI version, and checks generated RuleSync files.
-
-## Repository layout
+A current release reports results like these:
 
 ```text
-src/                         Rust library and binary
-packages/clilint/            Embedded global package
-skills/assess-cli-help/      Installable help assessment skill
-tests/fixtures/              Behavioral and skill fixtures
-openspec/                    Project specifications and changes
-.rulesync/                   Source for generated agent configuration
-.mise/tasks/                 Local and CI task entry points
+CLI Lint clilint 0.0.2
+Deterministic score: 98/100
+
+clilint/agent/non-interactive   warn       deterministic assertion failed
+clilint/help/long-option        pass       deterministic declared behavioral check passed
+clilint/help/useful-example     unassessed ai-agent run the required skill to assess the captured evidence
+
+Deterministic: 15 pass, 1 warn, 0 fail, 0 skip
+AI agent: 0 pass, 0 warn, 0 fail, 0 skip, 1 unassessed
 ```
 
-The Python 0.0.1 prototype remains available at tag `v0.0.1`. See [`docs/prototype-comparison.md`](docs/prototype-comparison.md) for the retained rule mapping and public behavior changes.
+Each line names a rule and its result. `pass`, `warn`, and `fail` come from repeatable checks. `unassessed` means an optional AI assessment has not been attached.
+
+Replace the final `clilint` with a command name or executable path:
+
+```sh
+clilint check my-cli
+clilint check ./path/to/my-cli --format json
+```
+
+Clilint exits with code 1 when a repeatable check or attached AI assessment fails. Invalid commands, packages, or assessment files exit with code 2 and write an error to stderr.
+
+## What Clilint checks
+
+The built-in rules check whether a command:
+
+- provides working `--help`, `-h`, `--version`, and `-V` options;
+- returns useful exit codes without hanging;
+- sends normal output and errors to the expected streams;
+- names errors and points the user toward help;
+- avoids color codes when output is piped; and
+- advertises structured and non-interactive modes for automation.
+
+Clilint also captures help text for an optional AI assessment of whether the help teaches a likely task with a useful example.
+
+## Learn more
+
+- [Install Clilint on each supported system](docs/installation.md)
+- [Add project-specific checks with an extension package](docs/packages.md)
+- [Run and attach AI assessments](docs/ai-assessments.md)
+- [Read the project direction](docs/vision.md)
+- [Contribute to Clilint](CONTRIBUTING.md)
 
 ## License
 
-[MIT](LICENSE)
+Clilint is available under the [MIT License](LICENSE).

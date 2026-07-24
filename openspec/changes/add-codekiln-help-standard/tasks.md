@@ -6,8 +6,8 @@
 - [x] 1.4 Decide whether discrete rating calculation belongs in this change or a separate OpenSpec change
 - [x] 1.5 Decide whether to rename the current public package, rule, and check interfaces or add compatibility aliases
 - [x] 1.6 Choose the flag for optional programmatic-use guidance
-- [ ] 1.7 Decide where Clilint obtains named check bundles during installation
-- [ ] 1.8 Decide the scope or location of a check-bundle installation
+- [x] 1.7 Decide where Clilint obtains named check bundles during installation
+- [x] 1.8 Decide the scope or location of a check-bundle installation
 
 ## 2. Add Check-Bundle Installation
 

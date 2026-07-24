@@ -37,6 +37,9 @@ results are summarized in `experiments/findings.md`.
   tested CLI tools.
 - Compare local documentation with a website during a Clilint check.
 - Use AI judgment for checks that Clilint can perform mechanically.
+- Define user configuration, XDG configuration, parent-project inheritance, or
+  local configuration overrides for Clilint. A later change can add that
+  hierarchy.
 
 ## Decisions
 
@@ -183,9 +186,122 @@ codekiln-help
 local-check-bundle
 ```
 
-Installing a check bundle makes its checks part of later Clilint runs. There is
-no separate activation step for each run. Clilint also accepts a local
-bundle as an installation source.
+For this change, installation applies to one project. The project records its
+installed check bundles in `.clilint/config.toml` in the current working
+directory. Clilint reads that file and includes every installed bundle in later
+checks without a separate activation step. It does not use the Git root or
+search parent directories in this version. This lets a monorepo configure each
+CLI tool from its own directory.
+
+Installation is declarative. The project records where a bundle comes from
+instead of requiring the bundle contents to be copied into the project. A
+source can refer to a Git repository and ref. Clilint also accepts a local
+bundle as an installation source so an author can develop and test a bundle
+before publishing it.
+
+The committed configuration uses explicit fields instead of packing the
+repository, ref, and path into one string:
+
+```toml
+[check_bundles.example]
+source = "git"
+url = "https://example.com/check-bundles.git"
+ref = "v1.0.0"
+path = "bundles/example"
+```
+
+`source` distinguishes a Git source from a local path. A Git source names its
+repository URL and may name a branch, tag, or commit in `ref`. It may also name
+the directory containing one bundle in `path`. The table name must match the
+name declared by the bundle after Clilint loads it.
+
+An installation command may accept a compact source spelling for convenience,
+but it writes the explicit fields to `.clilint/config.toml`. Clilint does not
+map `codekiln-help` or another short name to a hidden source in this version.
+Such mappings would require a catalog similar to a Claude Code plugin
+marketplace. A later change can add catalogs without changing the explicit
+source format.
+
+#### Offer an optional project lockfile
+
+A project can commit `.clilint/lock.toml`. `clilint bundle lock` resolves each
+requested Git ref to a full commit SHA and records enough source information to
+verify the downloaded bundle. Once the lockfile exists, ordinary installation
+and checking preserve its resolved commits. They do not advance a branch or tag
+merely because its remote value changed.
+
+`clilint bundle update [<name>]` is the explicit way to re-resolve a requested
+ref. It updates every bundle when no name is given and only the named bundle
+otherwise. A `--locked` option makes commands fail when the lockfile is absent,
+does not match the declarations, or would need to change.
+
+This follows the useful behavior shared by mise and uv: the declaration can
+remain readable and flexible while the optional lockfile records the exact
+result. Unlike Dev Container Features, Clilint does not create a lockfile by
+default in this version.
+
+#### Separate installed data from disposable cache
+
+Resolved check bundles are installed data because later checks depend on them.
+They live under the Clilint data directory rather than inside the project or
+the disposable cache. `CLILINT_DATA_DIR` overrides the location. Otherwise
+Clilint uses `XDG_DATA_HOME/clilint`, with the platform-appropriate XDG fallback
+when `XDG_DATA_HOME` is unset.
+
+Temporary Git clones, downloads, and source metadata use the Clilint cache
+directory. `CLILINT_CACHE_DIR` overrides the location. Otherwise Clilint uses
+`XDG_CACHE_HOME/clilint`, with the platform cache directory as the fallback.
+Deleting this cache does not remove installed bundles.
+
+This distinction follows mise: files that ordinary use requires belong in its
+data directory, while files that may be deleted and regenerated belong in its
+cache directory.
+
+#### Install a missing declared bundle before checking
+
+An ordinary `clilint check` makes the declared configuration true before it
+checks the tested CLI tool. If an installed bundle is missing, Clilint
+downloads, validates, and installs it before running any check. It uses the
+locked commit when a lockfile exists. Without a lockfile, it reuses the locally
+installed resolution until the user requests an update.
+
+Clilint never silently skips a declared bundle. If installation fails, the
+whole check fails before it runs the tested CLI tool. `--offline` prohibits
+network requests; when required content is unavailable locally, Clilint names
+the missing bundles and prints the command that can install them later.
+
+This makes the complete check set the easy path while making a partial,
+misleading report impossible. It resembles the default auto-install behavior
+of `mise run` and the automatic lock and sync behavior of `uv run`, while still
+providing strict offline and locked modes.
+
+#### Manage declarations under one `bundle` command
+
+The first command surface is:
+
+```text
+clilint bundle install [<source>]
+clilint bundle lock [<name>]
+clilint bundle list [--json]
+clilint bundle update [<name>]
+clilint bundle remove <name>
+```
+
+`install <source>` adds or updates one declaration and installs it. `install`
+without a source installs anything already declared but missing, which is the
+normal command after cloning a project. `lock` creates or completes the
+optional lockfile without advancing entries that are already locked. `list`
+shows each declaration, requested ref, resolved commit, source, and installation
+status. `update` explicitly advances requested refs. `remove` removes the
+declaration and its active project installation.
+
+This keeps Claude Code's familiar install, list, update, and remove operations,
+but groups them under Clilint's singular `bundle` command. A separate `add`
+command would duplicate the declaration-writing behavior of `install`.
+
+User-level defaults, parent-directory discovery and merging, and local
+overrides remain deferred. The future hierarchy should draw on mise's
+configuration model, but this change will not establish its precedence rules.
 
 ### Reuse one help checker across the checks
 
@@ -225,6 +341,17 @@ can see why the tested CLI tool did not reach one of those ratings.
 - **Interactive viewers behave differently across systems** → Test the
   non-interactive behavior in the normal Clilint run and keep interactive tests
   separate.
+- **A moving Git ref can produce different checks on different machines** →
+  Offer the committed lockfile, preserve existing resolutions, and advance refs
+  only through `bundle update`.
+- **A project declaration can cause a network request during `check`** → Show
+  which missing bundles are being installed and provide `--offline` and
+  `--locked` modes for callers that prohibit resolution or downloads.
+- **A remote bundle is untrusted input** → Accept only declarative checks using
+  supported checkers, validate the complete bundle before activation, and
+  replace installed contents atomically.
+- **An unavailable bundle could produce a report with fewer checks than the
+  project declared** → Fail the entire run before checking the tested CLI tool.
 
 ## Migration Plan
 
@@ -276,15 +403,101 @@ terms without providing a needed compatibility benefit.
 Use `--programmatic`. It describes how the interface will be used and remains
 available to people, scripts, and agents.
 
-## Open Questions
+### 7 - Must installation copy a check bundle into the project that develops the tested CLI tool?
 
-### 7 - Where should Clilint obtain a named check bundle during installation?
-
-<ANSWER_HERE>
+No. Installation records a source declaration in project configuration. A
+source can refer to a Git repository and ref, so a project can install a bundle
+without committing a copy of its contents. A local bundle path is also
+supported for bundle development.
 
 ### 8 - Should check-bundle installation apply to one project, one user, or an explicit location chosen by the user?
 
-<ANSWER_HERE>
+Use project-level installation for this change. Later changes can add user
+configuration, XDG configuration, parent-project inheritance, and local
+overrides.
+
+### 9 - What project dot directory and files should hold installed check-bundle declarations, and how should Clilint find the project root?
+
+Use `.clilint/config.toml` in the current working directory. That directory is
+the project root for the current invocation. Clilint does not infer the project
+root from `.git` and does not search parent directories in this version. This
+allows separate CLI tools inside one monorepo to use separate configurations.
+
+A later change may search parent directories and merge project, user, XDG, and
+local configuration. That change must define precedence before enabling the
+search.
+
+### 10 - How should a source declaration identify a Git repository, ref, and optional bundle path, and should a short name such as `codekiln-help` map to a known source?
+
+Use explicit TOML fields for the source type, repository URL, requested ref,
+and optional path within the repository. A command may accept a compact
+spelling inspired by RuleSync, but it writes the expanded fields to
+`.clilint/config.toml`.
+
+The configured name must match the name declared by the downloaded bundle.
+Clilint does not map `codekiln-help` to a hidden source in this version. A
+future catalog can provide trusted short-name mappings in the same way that a
+Claude Code marketplace maps plugin names to source declarations.
+
+### 11 - Should Clilint resolve a requested Git ref to an exact commit in a committed lockfile, and how should a user request an update?
+
+Yes, as an optional affordance. `clilint bundle lock` creates
+`.clilint/lock.toml`, which records each requested ref's full commit SHA. The
+project should commit that file. Once it exists, install and check commands
+preserve its resolved commits.
+
+`clilint bundle update [<name>]` explicitly advances one named bundle or every
+bundle when no name is given. `--locked` fails rather than creating or changing
+the lockfile.
+
+### 12 - Where should Clilint cache resolved bundle contents, and what should happen when the required contents are missing?
+
+Installed bundle contents are data, not cache. Store them under
+`CLILINT_DATA_DIR` when set or the platform's `XDG_DATA_HOME/clilint`
+location otherwise. Store disposable Git clones, downloads, and source
+metadata under `CLILINT_CACHE_DIR` or the platform's
+`XDG_CACHE_HOME/clilint` location.
+
+If installed contents are missing, Clilint restores them before checking.
+Deleting the disposable cache does not remove installed bundles. If restoration
+is impossible, Clilint fails before running any check and identifies the
+missing bundles.
+
+### 13 - May an ordinary `clilint check` download a missing bundle, or must a separate installation command perform every network request?
+
+An ordinary `clilint check` may download a declared bundle when its installed
+contents are missing. It does not refresh an installed branch or tag during an
+ordinary check. Clilint either runs the complete declared check set or fails;
+it never omits an unavailable bundle and produces a partial report.
+
+`--offline` prohibits network access and fails with the missing bundle names
+and the command needed to install them later. `--locked` also requires the
+project lockfile to cover the declarations without changing it.
+
+### 14 - Which commands should add, update, list, and remove project check-bundle declarations?
+
+Use one `bundle` command group:
+
+```text
+clilint bundle install [<source>]
+clilint bundle lock [<name>]
+clilint bundle list [--json]
+clilint bundle update [<name>]
+clilint bundle remove <name>
+```
+
+`install <source>` records and installs one bundle. `install` without a source
+installs any declared bundle that is missing. `lock` creates or completes the
+optional lockfile without advancing existing entries. `list` reports declared
+and resolved state. `update` advances requested refs. `remove` removes the
+project declaration and active installation.
+
+Do not add a separate `add` command. Recording the declaration is part of
+installing a bundle.
+
+## Open Questions
+
+None for the first `codekiln-help` proposal.
 
 ## Citations
 
@@ -292,3 +505,5 @@ available to people, scripts, and agents.
 - [My/Pref/Writing/Use the simpler word](https://github.com/codekiln/logseq-encode-garden/blob/main/pages/My___Pref___Writing___Use%20the%20simpler%20word.md)
 - [My/Principle/Dispel Ambiguity](https://github.com/codekiln/logseq-encode-garden/blob/main/pages/My___Principle___Dispel%20Ambiguity.md)
 - [My/Principle/Simplify/Minimize Surface Area](https://github.com/codekiln/logseq-encode-garden/blob/main/pages/My___Principle___Simplify___Minimize%20Surface%20Area.md)
+- [My/Pref/Dev/Tool/Prefer XDG-Compliant CLI Tools](https://github.com/codekiln/logseq-encode-garden/blob/main/pages/My___Pref___Dev___Tool___Prefer%20XDG-Compliant%20CLI%20Tools.md)
+- [My/Principle/Make the Right Thing Easy and the Wrong Thing Hard](https://github.com/codekiln/logseq-encode-garden/blob/main/pages/My___Principle___Make%20the%20Right%20Thing%20Easy%20and%20the%20Wrong%20Thing%20Hard.md)

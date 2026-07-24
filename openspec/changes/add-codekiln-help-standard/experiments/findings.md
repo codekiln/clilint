@@ -85,3 +85,12 @@ check must also:
 Clilint therefore needs one hierarchical help check that can share these
 results across the separate `codekiln-help` checks. The finished check bundle
 will also demonstrate this checker for authors of custom check bundles.
+
+## Implementation verification
+
+The eight experiment tests still pass after implementing the checker and
+bundle. The implementation confirmed the existing decisions: ordinary JSON
+help is sufficient for recursive command discovery, outline and search results
+can feed exact `section` values into later commands, and direct and recursive
+section retrieval need separate checks. No experiment result required a design
+change.

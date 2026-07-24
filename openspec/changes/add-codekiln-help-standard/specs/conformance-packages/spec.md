@@ -39,7 +39,7 @@ fixtures, and report results.
 
 ## MODIFIED Requirements
 
-### Requirement: Local extension packages
+### Requirement: Local extension check bundles
 Clilint SHALL install a user-authored check bundle from a local path and SHALL
 evaluate its checks in later runs together with every check bundle it extends.
 

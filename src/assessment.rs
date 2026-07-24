@@ -8,7 +8,7 @@ use crate::model::{AssessmentProvenance, EvaluationMethod, Report, ResultStatus,
 #[serde(deny_unknown_fields)]
 pub struct AssessmentDocument {
     pub format_version: u32,
-    pub rule: String,
+    pub check: String,
     pub result: ResultStatus,
     pub explanation: String,
     pub skill: SkillRef,
@@ -32,40 +32,40 @@ pub fn attach(report: &mut Report, document: AssessmentDocument) -> Result<(), S
     if document.format_version != 1 {
         return Err(format!(
             "assessment for {} uses unsupported format version {}",
-            document.rule, document.format_version
+            document.check, document.format_version
         ));
     }
     if document.result == ResultStatus::Unassessed {
         return Err(format!(
             "assessment for {} cannot use result unassessed",
-            document.rule
+            document.check
         ));
     }
     let finding = report
         .findings
         .iter_mut()
-        .find(|finding| finding.rule == document.rule)
-        .ok_or_else(|| format!("assessment references unknown rule {}", document.rule))?;
+        .find(|finding| finding.check == document.check)
+        .ok_or_else(|| format!("assessment references unknown check {}", document.check))?;
     if finding.evaluation_method != EvaluationMethod::AiAgent {
         return Err(format!(
-            "assessment rule {} is not an AI-agent rule",
-            document.rule
+            "assessment check {} is not an AI-agent check",
+            document.check
         ));
     }
     if finding.assessment.is_some() {
         return Err(format!(
-            "more than one assessment was supplied for rule {}",
-            document.rule
+            "more than one assessment was supplied for check {}",
+            document.check
         ));
     }
     let expected_skill = finding
         .required_skill
         .as_ref()
-        .ok_or_else(|| format!("rule {} has no required skill", document.rule))?;
+        .ok_or_else(|| format!("check {} has no required skill", document.check))?;
     if &document.skill != expected_skill {
         return Err(format!(
             "assessment for {} uses skill {} {}, expected {} {}",
-            document.rule,
+            document.check,
             document.skill.name,
             document.skill.version,
             expected_skill.name,
@@ -75,7 +75,7 @@ pub fn attach(report: &mut Report, document: AssessmentDocument) -> Result<(), S
     if document.evidence_digest != finding.evidence_digest {
         return Err(format!(
             "assessment for {} has stale evidence digest {}, expected {}",
-            document.rule, document.evidence_digest, finding.evidence_digest
+            document.check, document.evidence_digest, finding.evidence_digest
         ));
     }
 
@@ -91,13 +91,15 @@ pub fn attach(report: &mut Report, document: AssessmentDocument) -> Result<(), S
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{DeterministicSummary, Finding, PackageIdentity, ResultCounts, Severity};
+    use crate::model::{
+        CheckBundleIdentity, DeterministicSummary, Finding, ResultCounts, Severity,
+    };
 
     fn report() -> Report {
         Report {
-            format_version: 1,
+            format_version: 2,
             tool_version: "0.0.2".into(),
-            packages: vec![PackageIdentity {
+            check_bundles: vec![CheckBundleIdentity {
                 name: "clilint".into(),
                 version: "0.0.2".into(),
             }],
@@ -105,11 +107,12 @@ mod tests {
             deterministic: DeterministicSummary::default(),
             ai_agent: ResultCounts::default(),
             findings: vec![Finding {
-                rule: "clilint/help/useful-example".into(),
+                check: "clilint/help/useful-example".into(),
                 title: "Useful help".into(),
                 severity: Severity::Warn,
                 evaluation_method: EvaluationMethod::AiAgent,
                 result: ResultStatus::Unassessed,
+                required_for_ratings: Vec::new(),
                 detail: String::new(),
                 evidence: serde_json::json!({"help": "text"}),
                 evidence_digest: "sha256:abc".into(),
@@ -125,7 +128,7 @@ mod tests {
     fn document() -> AssessmentDocument {
         AssessmentDocument {
             format_version: 1,
-            rule: "clilint/help/useful-example".into(),
+            check: "clilint/help/useful-example".into(),
             result: ResultStatus::Pass,
             explanation: "The example teaches a likely task.".into(),
             skill: SkillRef {

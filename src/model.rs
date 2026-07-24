@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct PackageIdentity {
+pub struct CheckBundleIdentity {
     pub name: String,
     pub version: String,
 }
@@ -59,6 +59,16 @@ pub enum ResultStatus {
     Unassessed,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RatingLevel {
+    Poor,
+    Minimal,
+    Acceptable,
+    Good,
+    Excellent,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SkillRef {
@@ -95,11 +105,13 @@ pub struct AssessmentProvenance {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Finding {
-    pub rule: String,
+    pub check: String,
     pub title: String,
     pub severity: Severity,
     pub evaluation_method: EvaluationMethod,
     pub result: ResultStatus,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub required_for_ratings: Vec<RatingLevel>,
     pub detail: String,
     pub evidence: serde_json::Value,
     pub evidence_digest: String,
@@ -152,7 +164,7 @@ impl Default for DeterministicSummary {
 pub struct Report {
     pub format_version: u32,
     pub tool_version: String,
-    pub packages: Vec<PackageIdentity>,
+    pub check_bundles: Vec<CheckBundleIdentity>,
     pub target: String,
     pub deterministic: DeterministicSummary,
     pub ai_agent: ResultCounts,
@@ -220,9 +232,9 @@ mod tests {
 
         let counts = ResultCounts::default();
         let report = Report {
-            format_version: 1,
+            format_version: 2,
             tool_version: "0.0.2".into(),
-            packages: vec![PackageIdentity {
+            check_bundles: vec![CheckBundleIdentity {
                 name: "clilint".into(),
                 version: "0.0.2".into(),
             }],
@@ -233,6 +245,6 @@ mod tests {
         };
         let encoded = serde_json::to_string(&report).unwrap();
         let decoded: Report = serde_json::from_str(&encoded).unwrap();
-        assert_eq!(decoded.format_version, 1);
+        assert_eq!(decoded.format_version, 2);
     }
 }

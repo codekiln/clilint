@@ -2,32 +2,55 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     VERSION,
+    check_bundle::{
+        Assertion, CheckBundleManifest, CheckDefinition, CheckerDefinition, InvocationCheck,
+    },
+    help_checker::HelpContext,
     model::{EvaluationMethod, Finding, Report, ResultStatus},
-    package::{Assertion, CheckDefinition, InvocationCheck, PackageManifest, RuleDefinition},
     runner::Runner,
 };
 
 pub fn check(
     target: &str,
-    package: &PackageManifest,
+    bundle: &CheckBundleManifest,
     runner: &mut Runner,
 ) -> Result<Report, String> {
-    let mut findings = Vec::with_capacity(package.rules.len());
-    for rule in &package.rules {
-        findings.push(match rule.evaluation_method {
-            EvaluationMethod::Deterministic => deterministic(rule, runner)?,
-            EvaluationMethod::AiAgent => agent(rule, runner)?,
+    let mut findings = Vec::with_capacity(bundle.checks.len());
+    let help_limits = bundle.checks.iter().find_map(|check| {
+        if let Some(CheckerDefinition::HierarchicalHelp { limits, .. }) = &check.checker {
+            Some(limits)
+        } else {
+            None
+        }
+    });
+    if let Some(expected) = help_limits
+        && bundle.checks.iter().any(|check| {
+            matches!(
+                &check.checker,
+                Some(CheckerDefinition::HierarchicalHelp { limits, .. }) if limits != expected
+            )
+        })
+    {
+        return Err(
+            "all hierarchical-help checkers in one run must use the same limits".to_owned(),
+        );
+    }
+    let help_context = help_limits.map(|limits| HelpContext::collect(runner, limits));
+    for check in &bundle.checks {
+        findings.push(match check.evaluation_method {
+            EvaluationMethod::Deterministic => deterministic(check, runner, help_context.as_ref())?,
+            EvaluationMethod::AiAgent => agent(check, runner)?,
         });
     }
-    findings.sort_by(|left, right| left.rule.cmp(&right.rule));
+    findings.sort_by(|left, right| left.check.cmp(&right.check));
 
     let mut report = Report {
-        format_version: 1,
+        format_version: 2,
         tool_version: VERSION.into(),
-        packages: if package.resolved_packages.is_empty() {
-            vec![package.package.clone()]
+        check_bundles: if bundle.resolved_check_bundles.is_empty() {
+            vec![bundle.check_bundle.clone()]
         } else {
-            package.resolved_packages.clone()
+            bundle.resolved_check_bundles.clone()
         },
         target: target.into(),
         deterministic: Default::default(),
@@ -38,13 +61,17 @@ pub fn check(
     Ok(report)
 }
 
-fn deterministic(rule: &RuleDefinition, runner: &mut Runner) -> Result<Finding, String> {
-    let check = rule
-        .check
+fn deterministic(
+    check: &CheckDefinition,
+    runner: &mut Runner,
+    help_context: Option<&HelpContext>,
+) -> Result<Finding, String> {
+    let checker = check
+        .checker
         .as_ref()
-        .ok_or_else(|| format!("deterministic rule {} has no check", rule.id))?;
-    let (passed, evidence, failures) = match check {
-        CheckDefinition::Invocation { invocation } => {
+        .ok_or_else(|| format!("deterministic check {} has no checker", check.id))?;
+    let (passed, evidence, failures) = match checker {
+        CheckerDefinition::Invocation { invocation } => {
             let (observation, failures) = evaluate(invocation, runner)?;
             (
                 failures.is_empty(),
@@ -52,7 +79,7 @@ fn deterministic(rule: &RuleDefinition, runner: &mut Runner) -> Result<Finding, 
                 failures,
             )
         }
-        CheckDefinition::AnyInvocation { invocations } => {
+        CheckerDefinition::AnyInvocation { invocations } => {
             let mut observations = Vec::new();
             let mut all_failures = Vec::new();
             let mut passed = false;
@@ -70,7 +97,7 @@ fn deterministic(rule: &RuleDefinition, runner: &mut Runner) -> Result<Finding, 
                 if passed { Vec::new() } else { all_failures },
             )
         }
-        CheckDefinition::AllInvocations { invocations } => {
+        CheckerDefinition::AllInvocations { invocations } => {
             let mut observations = Vec::new();
             let mut failures = Vec::new();
             for invocation in invocations {
@@ -84,49 +111,65 @@ fn deterministic(rule: &RuleDefinition, runner: &mut Runner) -> Result<Finding, 
                 failures,
             )
         }
+        CheckerDefinition::HierarchicalHelp { behavior, .. } => {
+            let context = help_context.ok_or_else(|| {
+                format!(
+                    "hierarchical help context was not collected for {}",
+                    check.id
+                )
+            })?;
+            let (passed, detail, evidence) = context.result(*behavior);
+            let result = if passed {
+                ResultStatus::Pass
+            } else {
+                check.severity.failed_result()
+            };
+            return Ok(finding(check, result, detail, evidence, None));
+        }
     };
     let result = if passed {
         ResultStatus::Pass
     } else {
-        rule.severity.failed_result()
+        check.severity.failed_result()
     };
     let detail = if passed {
         "declared behavioral check passed".into()
     } else {
         failures.join("; ")
     };
-    Ok(finding(rule, result, detail, evidence, None))
+    Ok(finding(check, result, detail, evidence, None))
 }
 
-fn agent(rule: &RuleDefinition, runner: &mut Runner) -> Result<Finding, String> {
-    let evidence_spec = rule
+fn agent(check: &CheckDefinition, runner: &mut Runner) -> Result<Finding, String> {
+    let evidence_spec = check
         .evidence
         .as_ref()
-        .ok_or_else(|| format!("AI-agent rule {} has no evidence invocation", rule.id))?;
+        .ok_or_else(|| format!("AI-agent check {} has no evidence invocation", check.id))?;
     let observation = runner.run(evidence_spec)?;
     let evidence = serde_json::json!({"observations": [observation]});
     Ok(finding(
-        rule,
+        check,
         ResultStatus::Unassessed,
         "run the required skill to assess the captured evidence".into(),
         evidence,
-        rule.skill.clone(),
+        check.skill.clone(),
     ))
 }
 
 fn finding(
-    rule: &RuleDefinition,
+    check: &CheckDefinition,
     result: ResultStatus,
     detail: String,
     evidence: serde_json::Value,
     required_skill: Option<crate::model::SkillRef>,
 ) -> Finding {
     Finding {
-        rule: rule.id.clone(),
-        title: rule.title.clone(),
-        severity: rule.severity,
-        evaluation_method: rule.evaluation_method,
+        check: check.id.clone(),
+        title: check.title.clone(),
+        severity: check.severity,
+        evaluation_method: check.evaluation_method,
         result,
+        required_for_ratings: check.required_for_ratings.clone(),
         detail,
         evidence_digest: evidence_digest(&evidence),
         evidence,

@@ -1,0 +1,2 @@
+#!/bin/sh
+HIERARCHICAL_HELP_INVALID_HEADING=1 exec "$(dirname "$0")/hierarchical-help-cli" "$@"

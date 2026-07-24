@@ -1,0 +1,2 @@
+#!/bin/sh
+HIERARCHICAL_HELP_WRONG_PATH=1 exec "$(dirname "$0")/hierarchical-help-cli" "$@"

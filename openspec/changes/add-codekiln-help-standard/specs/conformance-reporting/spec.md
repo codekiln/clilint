@@ -16,7 +16,7 @@ or an AI assessment.
 - **WHEN** a report contains both deterministic and AI-assessed findings
 - **THEN** a consumer can distinguish the two methods without interpreting finding text
 
-### Requirement: Unassessed AI rules
+### Requirement: Unassessed AI checks
 The report SHALL distinguish an AI-assessed check that has not been assessed
 from a check that passed, warned, failed, or was skipped.
 

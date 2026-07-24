@@ -8,13 +8,13 @@ pub fn json(report: &Report) -> Result<String, String> {
 
 pub fn human(report: &Report) -> String {
     let mut output = String::new();
-    let packages = report
-        .packages
+    let check_bundles = report
+        .check_bundles
         .iter()
-        .map(|package| format!("{} {}", package.name, package.version))
+        .map(|bundle| format!("{} {}", bundle.name, bundle.version))
         .collect::<Vec<_>>()
         .join(", ");
-    let _ = writeln!(output, "CLI Lint {packages}");
+    let _ = writeln!(output, "CLI Lint {check_bundles}");
     let _ = writeln!(output, "Target: {}", report.target);
     let _ = writeln!(
         output,
@@ -29,7 +29,7 @@ pub fn human(report: &Report) -> String {
         let _ = writeln!(
             output,
             "{:<42} {:<10} {:<13} {}",
-            finding.rule,
+            finding.check,
             format!("{:?}", finding.result).to_lowercase(),
             method,
             finding.detail
@@ -53,13 +53,13 @@ pub fn human(report: &Report) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{DeterministicSummary, PackageIdentity, Report, ResultCounts};
+    use crate::model::{CheckBundleIdentity, DeterministicSummary, Report, ResultCounts};
 
     fn empty_report() -> Report {
         Report {
-            format_version: 1,
+            format_version: 2,
             tool_version: "0.0.2".into(),
-            packages: vec![PackageIdentity {
+            check_bundles: vec![CheckBundleIdentity {
                 name: "clilint".into(),
                 version: "0.0.2".into(),
             }],
@@ -74,7 +74,7 @@ mod tests {
     fn json_is_one_document() {
         let encoded = json(&empty_report()).unwrap();
         let decoded: serde_json::Value = serde_json::from_str(&encoded).unwrap();
-        assert_eq!(decoded["format_version"], 1);
+        assert_eq!(decoded["format_version"], 2);
     }
 
     #[test]

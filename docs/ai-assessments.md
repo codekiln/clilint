@@ -1,6 +1,6 @@
 # AI assessments
 
-Most Clilint rules use repeatable checks such as exit codes, output text, and response time. A rule can instead request an AI agent when the question requires judgment.
+Most Clilint checks use repeatable checkers for exit codes, output text, and response time. A check can instead request an AI agent when the question requires judgment.
 
 Clilint keeps these results separate. A requested AI assessment appears as `unassessed` until the matching skill reviews the captured evidence and produces an assessment document.
 
@@ -30,6 +30,6 @@ clilint check my-cli \
   --format json
 ```
 
-Clilint checks the document format, rule identifier, result, skill name and version, and evidence digest. The digest binds the assessment to the captured evidence. If the target's evidence changes, Clilint rejects the older assessment instead of attaching it to the new report.
+Clilint checks the document format, check identifier, result, skill name and version, and evidence digest. The digest binds the assessment to the captured evidence. If the tested CLI tool's evidence changes, Clilint rejects the older assessment instead of attaching it to the new report.
 
 The skill source is [`skills/assess-cli-help/SKILL.md`](../skills/assess-cli-help/SKILL.md). A working assessment fixture is available at [`tests/fixtures/useful-help-assessment.toml`](../tests/fixtures/useful-help-assessment.toml).

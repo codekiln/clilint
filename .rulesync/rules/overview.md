@@ -10,6 +10,13 @@ Use OpenSpec for planned changes. Before creating or editing OpenSpec artifacts,
 matching OpenSpec skill from `.rulesync/skills/` and follow the artifact instructions
 returned by the OpenSpec CLI. Do not invent the document format from memory.
 
+Before using OpenSpec, resolve the local preferences repository with
+`ghq list --full-path --exact github.com/codekiln/logseq-encode-garden`, then read and
+follow `pages/My___Pref___Dev___AI___OpenSpec.md`. That page,
+`My/Pref/Dev/AI/OpenSpec`, is the central source for the user's OpenSpec authoring
+preferences. Follow the relevant preferences and principles it links to when drafting
+and reviewing artifacts.
+
 When archiving an OpenSpec change, always run the spec-sync workflow before moving the
 change into the archive. Do not offer archive without syncing as a routine option.
 

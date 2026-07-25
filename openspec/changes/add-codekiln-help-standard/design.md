@@ -450,24 +450,47 @@ requirement that answer 3 attached to the `Good` and `Excellent` ratings.
 
 ## Open Questions
 
-### 16 - How should a check bundle express new behavior without a change to the Clilint binary?
+### 16 - How does a check bundle add a new expectation without a change to the Clilint binary, whether Clilint settles it mechanically or an agent judges it against a rubric?
 
 > Context from the drafting agent, for question 16.
 >
-> Clilint exists so that a person or team can write their own standard, install
-> it, and have an AI agent verify a CLI tool against it while building that
-> tool. A bundle that requires a change to Clilint cannot serve that purpose.
+> **Read the session record before answering:**
+> [Reframing the extension architecture for judgment-based checks](references/brainstorm-reframing-plugin-architecture-for-judgment-based-checks-influenced-by-jig-idea.md).
+> It holds the survey of eleven other extension systems, the project vision that
+> reframed this question, and the corrections that produced the wording above.
 >
-> `codekiln-help` requires one. Each of its checks names
-> `type = "hierarchical-help"` and one `behavior` value from a fixed set, so the
-> bundle file states which behaviors to evaluate while `src/help_checker.rs`
-> decides what each behavior means.
+> This question was restated on 2026-07-25. The earlier wording asked how a
+> bundle expresses "new behavior," and listed four missing capabilities: reading
+> values out of a command's JSON output, iterating over them, substituting them
+> into later invocations, and repeating that on discovered child commands. All
+> four are about collecting evidence. None is about judgment. Answering that
+> version would decide the architecture in favor of mechanical checks alone,
+> when the project needs mechanical checks and rubric-based judgment to be
+> equally comfortable.
 >
-> The declarative vocabulary is missing four things that `codekiln-help` needs:
-> reading values out of a command's JSON output, iterating over the values it
-> read, substituting them into later invocations, and repeating that on
-> discovered child commands. Every part of `src/help_checker.rs` is those four
-> capabilities applied to help.
+> The concrete problem has not changed. Each `codekiln-help` check names
+> `type = "hierarchical-help"` and one `behavior` value from a fixed Rust enum,
+> so the bundle file says which behaviors to evaluate while the 873 lines of
+> `src/help_checker.rs` decide what each behavior means. A bundle that requires
+> a change to Clilint cannot serve the project's purpose: a person or team
+> writes their own standard, installs it, and has an agent verify a tool against
+> it while building that tool.
+>
+> Three positions came out of the session. They are the agent's, and the project
+> owner has not accepted them:
+>
+> 1. The distinction that matters is collecting evidence versus evaluating it,
+>    not mechanical versus judged. Clilint already has that split but in two
+>    incompatible shapes: a deterministic check carries a `checker`, while an AI
+>    check carries a `skill` plus an `evidence` invocation.
+> 2. Fixing what a check must return is what lets checks be written in a
+>    language the host does not speak. Powerpipe and pre-commit both did this.
+>    ESLint and pi could not, because a check is a callback in the host runtime.
+> 3. Collecting evidence is the hard part, and it has three candidate answers:
+>    Clilint collects it from data in the bundle, the bundle ships a script
+>    Clilint runs, or the agent collects it from instructions. Repeatability
+>    differs across the three, so the choice may belong to each check rather
+>    than to the system.
 
 <ANSWER_HERE>
 

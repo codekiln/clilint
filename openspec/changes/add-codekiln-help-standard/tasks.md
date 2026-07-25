@@ -69,6 +69,10 @@ the Clilint binary. It governs whether `src/help_checker.rs` and the
 grouped here rather than patched in place.
 
 - [ ] 7.1 Hold a dedicated OpenSpec explore session on question 16 and record the answer in `design.md`
+  - a first session ran on 2026-07-25 and restated question 16 rather than
+    answering it; the record is in
+    `references/brainstorm-reframing-plugin-architecture-for-judgment-based-checks-influenced-by-jig-idea.md`
+  - the answer is still open, so this task stays incomplete
 - [ ] 7.2 Revise the `hierarchical-help-checking` delta spec, which currently requires Clilint itself to supply the checker that discovers command paths
 - [ ] 7.3 Re-express the `codekiln-help` checks under the chosen model, then confirm an author can write an equivalent bundle without changing Clilint
 - [ ] 7.4 Carry these findings into the rework or fix them where the code survives:

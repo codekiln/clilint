@@ -118,31 +118,9 @@ terminal control sequences.
 - **WHEN** an agent captures `tool repo clone help section <section>`
 - **THEN** the invocation completes without input, a pager, or terminal control sequences
 
-### Requirement: Local help viewer
-`<command path> help view` SHALL present the complete local document. When
-attached to an interactive terminal it SHALL use a human-readable terminal
-presentation. When non-interactive it SHALL write the document to stdout
-without starting a pager.
-
-#### Scenario: Non-interactive local view
-- **WHEN** stdout for `tool repo clone help view` is not a terminal
-- **THEN** the command writes the local document to stdout and exits without waiting for input
-
-### Requirement: Web help viewer
-A tested CLI tool claiming a `Good` or `Excellent` `codekiln-help` rating
-SHALL support `<command path> help view --web`. The command SHALL resolve the
-web page corresponding to the tested CLI tool's current version and command
-path. In an interactive terminal it SHALL open that page. When non-interactive
-it SHALL write the resolved URL to stdout without opening a browser.
-
-#### Scenario: Agent resolves a web page
-- **WHEN** an agent captures `tool repo clone help view --web`
-- **THEN** the command writes the corresponding URL without launching a browser
-
 ### Requirement: Offline help behavior
 Child-command discovery, default and `--programmatic` overviews, outlines,
-section retrieval, search, and local viewing SHALL complete without network
-access.
+section retrieval, and search SHALL complete without network access.
 
 #### Scenario: Navigate without network access
 - **WHEN** network access is unavailable

@@ -1,87 +1,107 @@
 ## ADDED Requirements
 
-### Requirement: Checks in codekiln-help
-The `codekiln-help` check bundle SHALL define deterministic checks for help availability,
-command discovery, document outlines, section retrieval, shared help,
-programmatic guidance, offline search, non-interactive output, local viewing,
-and web-page resolution.
+### Requirement: One complete codekiln-help check
+The `codekiln-help` check bundle SHALL define one hierarchical-help check whose
+bundle-owned checker gathers the command hierarchy and help documents,
+verifies every help behavior in this specification, and returns one Check
+Result with one Score and zero or more Check Messages.
 
 #### Scenario: Check a CLI tool that follows the standard
 - **WHEN** a user checks a nested CLI tool that follows the standard with the `codekiln-help` check bundle
-- **THEN** the report contains passing deterministic findings for the hierarchical help checks
+- **THEN** the hierarchical-help Check Result has a Score of `4.0` and no Warning or Error Check Message
 
-### Requirement: Hierarchical help checker
-Clilint SHALL provide a deterministic checker that discovers command paths
-by following immediate child commands in JSON help output and uses JSON output
-from one help command as input to later help commands.
-Check-bundle validation SHALL reject unsupported hierarchical help checks before
-running the tested CLI tool.
+#### Scenario: Several help behaviors fail
+- **WHEN** one tested CLI tool has invalid command discovery and incomplete programmatic guidance
+- **THEN** one hierarchical-help Check Result contains focused Check Messages for both unmet expectations
 
-#### Scenario: Follow a discovered section
-- **WHEN** a JSON outline returns a valid `section` value
-- **THEN** Clilint passes that exact value to a later section invocation
+### Requirement: Bundle-owned hierarchical-help checker
+The `codekiln-help` bundle SHALL supply its hierarchical-help checker through
+the same Checker CLI protocol available to another installed check
+bundle. Clilint SHALL NOT contain a hierarchical-help checker type or
+check-specific command traversal.
 
-#### Scenario: Reject an unknown check
-- **WHEN** a check bundle declares an unsupported hierarchical help check
-- **THEN** Clilint rejects the check bundle before invoking the tested CLI tool
+#### Scenario: Bundle author implements an equivalent check
+- **WHEN** a bundle author installs another local bundle with an equivalent Checker CLI
+- **THEN** Clilint can run its check without a change to the Clilint binary
 
-### Requirement: Reused help results
-When several checks need the same help command, Clilint SHALL run that command
-once during a check and reuse its result. Clilint SHALL retain a separate
-finding for each check.
+### Requirement: Reused help evidence
+The hierarchical-help checker SHALL gather each needed help response once
+during its check and reuse the response while verifying related expectations.
 
-#### Scenario: Several checks use one command hierarchy
-- **WHEN** command-discovery, outline, and section checks need the same command hierarchy
-- **THEN** Clilint reuses the recorded JSON help observations and evaluates separate findings from them
+#### Scenario: Several expectations use one command hierarchy
+- **WHEN** command discovery, outlines, and section retrieval need the same command hierarchy
+- **THEN** the checker reuses the recorded hierarchy within one check run
 
 ### Requirement: Recursive command-path checking
-Clilint SHALL evaluate applicable help checks at every valid command path
-returned by recursively following child commands in JSON help.
+The hierarchical-help checker SHALL verify applicable help behavior at every
+valid command path returned by recursively following immediate child commands
+in JSON help.
 
 #### Scenario: Failure at a deeply nested command
 - **WHEN** `tool repo clone` is advertised but lacks its required help outline
-- **THEN** the relevant finding identifies the `repo clone` command path and the failed invocation
+- **THEN** a Check Message identifies the `repo clone` command path and the failed invocation
 
 ### Requirement: JSON help validation
-Clilint SHALL validate the JSON format version, command paths, heading levels,
-`section` values, and search results before using them in later commands.
+The hierarchical-help checker SHALL validate JSON format versions, command
+paths, heading levels, `section` values, search results, and relationships
+between responses before using returned values in later commands.
+
+#### Scenario: Follow a discovered section
+- **WHEN** a JSON outline returns a valid `section` value
+- **THEN** the checker passes that exact value to a later section invocation
 
 #### Scenario: Outline contains an invalid heading level
 - **WHEN** a heading record contains a level outside the Markdown heading range
-- **THEN** Clilint records the malformed heading as a deterministic failure and does not request its section
+- **THEN** a Check Message identifies the malformed heading and the checker does not request its section
 
-### Requirement: Help check limits
-Clilint SHALL enforce configurable limits on discovered command count, command
-depth, captured document bytes, search results, total help commands, and time
-per command.
+### Requirement: Hierarchical-help limits
+The hierarchical-help checker SHALL bound command count, command depth,
+captured document bytes, search results, total help commands, and time per
+command. Its configured limits SHALL permit every bound to be reached and
+reported independently.
 
 #### Scenario: Tested CLI tool advertises excessive commands
-- **WHEN** recursive child-command discovery exceeds the configured command limit
-- **THEN** Clilint stops following child commands and reports which bound was exceeded
+- **WHEN** recursive child-command discovery exceeds the command-count limit
+- **THEN** the checker stops following child commands and returns a Check Message that identifies that limit
+
+#### Scenario: Total command budget is exhausted
+- **WHEN** the checker reaches the total help-command limit
+- **THEN** a Check Message identifies the exhausted budget instead of assigning the failure to whichever help behavior happened to run last
+
+### Requirement: Shared and programmatic help checking
+The hierarchical-help checker SHALL verify whether default help contains the
+guidance required for every caller and whether `--programmatic` retains that
+help while adding instructions for piping, section retrieval,
+machine-readable output, and avoiding interactive output.
+
+#### Scenario: Programmatic guidance omits an instruction
+- **WHEN** programmatic help mentions JSON and sections but does not explain piping or avoiding interactive output
+- **THEN** the Check Result contains a Check Message for the omitted required guidance
+
+### Requirement: Search checking
+The hierarchical-help checker SHALL verify that a search for a term present in
+the local help returns at least one valid command path and `section` value that
+can be used for section retrieval.
+
+#### Scenario: Search returns no results
+- **WHEN** the checker searches for a term present in the fixture help and receives an empty result
+- **THEN** the Check Result contains an Error-level Check Message for search
 
 ### Requirement: Non-interactive offline checking
-The hierarchical help checker SHALL close standard input, capture output from the
-tested CLI tool without a terminal, and complete without network access, a
-pager, a local viewer, or a browser.
+The hierarchical-help checker SHALL close standard input for tested CLI tool
+invocations, capture output without a terminal, omit network access, and
+complete without starting a pager or another interactive program.
 
-#### Scenario: Check viewer behavior safely
-- **WHEN** Clilint evaluates local and web viewer checks
-- **THEN** it captures their non-interactive stdout behavior without opening another program
+#### Scenario: Check captured help safely
+- **WHEN** Clilint runs the hierarchical-help check with closed input and captured output
+- **THEN** the checker completes without waiting for input, opening another program, or using the network
 
-### Requirement: Hierarchical help evidence
-Each hierarchical-help finding SHALL include the relevant command paths,
-commands run, captured output, requested sections, and validation failures in
-the JSON report. Clilint SHALL report a separate result for every tested
-`codekiln-help` check.
+### Requirement: Focused hierarchical-help evidence
+Each hierarchical-help Check Message SHALL identify the relevant command path,
+invocation, observed output or validation failure, and the evidence supporting
+the message. The Check Result SHALL bound repeated observations instead of
+copying all gathered evidence into every Check Message.
 
 #### Scenario: Inspect a section mismatch
 - **WHEN** a retrieved section does not match the section advertised by an outline
-- **THEN** the report evidence identifies the command path, requested section, outline observation, and section observation
-
-### Requirement: Web check rating
-The `codekiln-help` check bundle SHALL classify successful versioned web-page
-resolution as required for `Good` and `Excellent` ratings.
-
-#### Scenario: Web check fails at a high rating
-- **WHEN** a tested CLI tool satisfies the lower-rated help checks but cannot resolve its versioned web page
-- **THEN** the web check result prevents `Good` and `Excellent` `codekiln-help` ratings
+- **THEN** the Check Message identifies the command path, requested section, outline observation, and section observation

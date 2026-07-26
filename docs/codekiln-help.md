@@ -1,8 +1,8 @@
 # `codekiln-help`
 
 `codekiln-help` checks whether people and programs can navigate a CLI tool's
-complete local documentation. The bundle is also a working example of a
-bundle-owned Checker CLI.
+complete local documentation. The bundle also shows how to implement a Checker
+CLI.
 
 Install it in the directory containing the tested project:
 

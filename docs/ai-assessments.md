@@ -1,8 +1,7 @@
 # Judgment-based Assessments
 
 A judgment-based Check uses human or model interpretation to determine its
-Score or Check Messages. The Checker still owns evidence gathering and result
-validation.
+Score or Check Messages.
 
 ## Complete an Assessment
 
@@ -13,8 +12,8 @@ clilint check my-cli --format json > clilint-report.json
 ```
 
 An unfinished judgment-based Check has `"outcome": "awaiting-assessment"`.
-Its `assessment_request` contains the request identifier, evidence digest,
-Skill, rubric, and evidence needed by an external agent.
+Its `assessment_request` contains the Check, Skill, rubric, and evidence needed
+by an external agent.
 
 The agent writes one Assessment JSON file:
 
@@ -41,6 +40,10 @@ The agent writes one Assessment JSON file:
 }
 ```
 
+Copy `request_id` and `evidence_digest` from `assessment_request`. The Checker
+uses them to reject an Assessment made for a different Check request or older
+evidence.
+
 Supply the file on a later run:
 
 ```sh
@@ -49,12 +52,13 @@ clilint check my-cli \
   --format json
 ```
 
-Clilint or the bundle-owned Checker validates the request identifier, Check,
-Skill, evidence digest, Score, and Check Messages. A change to the captured
-evidence makes the older Assessment invalid.
+The Checker verifies that the Assessment uses the current Check, evidence, and
+Skill. Clilint validates the Score and Check Messages before adding the Check
+Result to the report. If the Checker gathers different evidence on the later
+run, it rejects the older Assessment.
 
-Clilint does not choose or start an AI model. Any agent harness that can read
-the request and write the JSON Assessment can complete the Check.
+Any agent that can read `assessment_request` and write the JSON Assessment can
+complete the Check.
 
 ## Install the help-assessment Skill
 

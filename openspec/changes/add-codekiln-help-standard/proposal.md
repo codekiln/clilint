@@ -11,7 +11,7 @@ checks.
 
 - Add a scoped `codekiln-help` check bundle for a `help` subcommand at every
   command path.
-- Give each bundle-owned Check one Checker CLI that owns setup, evidence
+- Give each Check in a local bundle one Checker CLI that owns setup, evidence
   gathering, and production of the Check Outcome without adding
   check-specific code to Clilint.
 - Invoke each Checker CLI as an ordinary child process from the project

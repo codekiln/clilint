@@ -1,10 +1,10 @@
 ## ADDED Requirements
 
-### Requirement: Bundle-owned judgment-based Checker CLI
-An installed check bundle SHALL be able to define a complete judgment-based
-Check with a Checker CLI. The CLI SHALL be able to use an Agent Skill stored
-with the Checker, gather evidence, and own the Assessment handoff without
-requiring Clilint to execute the Skill.
+### Requirement: Judgment-based Checker CLI
+A local check bundle SHALL be able to define a complete judgment-based Check
+with a Checker CLI. The CLI SHALL be able to use an Agent Skill stored with the
+Checker, gather evidence, and own the Assessment handoff without requiring
+Clilint to execute the Skill.
 
 #### Scenario: Installed Skill gathers its own evidence
 - **WHEN** an installed judgment-based Checker CLI exposes a Skill and evidence to an external agent

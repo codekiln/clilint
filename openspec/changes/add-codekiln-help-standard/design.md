@@ -118,7 +118,7 @@ The check-bundle documentation will explain:
 - the bundle file and its identity;
 - how it includes the core `clilint` checks;
 - how one check can verify several related behaviors;
-- how a Check names its bundle-owned Checker CLI;
+- how a Check names its Checker CLI;
 - how to install the bundle and run its checks;
 - how another bundle can extend it; and
 - how its fixtures and tests demonstrate passing and failing behavior.
@@ -247,10 +247,10 @@ directory, so the committed file works for everyone who clones the project. The
 table name must match the name declared by the bundle after Clilint loads it.
 
 A local path is enough to show what this change needs to show: a check bundle
-installs independently of the Clilint binary, and installed bundles compose in a
-declared order. Retrieving a bundle from a Git repository, resolving a ref to a
-commit, committing a lockfile, and storing downloaded contents outside the
-project form a separate capability, tracked outside this change.
+installs independently of Clilint, and installed bundles compose in a declared
+order. Retrieving a bundle from a Git repository, resolving a ref to a commit,
+committing a lockfile, and storing downloaded contents outside the project form
+a separate capability, tracked outside this change.
 
 #### Manage declarations under one `bundle` command
 
@@ -273,11 +273,11 @@ User-level defaults, parent-directory discovery and merging, and local
 overrides remain deferred. The future hierarchy should draw on mise's
 configuration model, but this change will not establish its precedence rules.
 
-### Require every bundle-owned Checker to be a CLI
+### Require a Checker CLI for each Check in a local bundle
 
-Each bundle-owned Check points to one Checker CLI. In the first protocol, this
-is what it means for a Check to be a CLI. The Check remains the logical unit of
-verification, and the Checker CLI is its executable interface.
+Each Check in a local bundle points to one Checker CLI. In the first protocol,
+this is what it means for a Check to be a CLI. The Check remains the logical
+unit of verification, and the Checker CLI is its executable interface.
 
 The CLI boundary is recursive:
 
@@ -333,11 +333,11 @@ because they describe checker execution and are most useful when the checker
 failed before producing a Check Result.
 
 Clilint owns the initial timeout and output limits. A bundle cannot raise them.
-Clilint reads both streams with fixed bounds, rejects protocol output over the
-standard-output limit, and returns a Check Error when standard error exceeds
-the retained-log limit. That Check Error retains the bounded logs and states
-that they were truncated. This keeps memory use bounded without adding
-per-bundle tuning before a concrete Checker needs it.
+Clilint reads both streams with fixed bounds. It rejects standard output that
+is too long. When Checker logs on standard error are too long, Clilint returns
+a Check Error that contains the part that fits and marks the logs as truncated.
+This keeps memory use bounded without adding per-bundle tuning before a
+concrete Checker needs it.
 
 A judgment-based Checker CLI may return Awaiting Assessment, expose a bundled
 Agent Skill and rubric to an external agent, and later validate a returned
@@ -348,9 +348,9 @@ that Assessment to the same Checker CLI. Clilint does not invoke or prescribe
 an agent harness.
 
 The built-in core checks continue to use checkers compiled into Clilint in this
-change. They adopt the shared Check Outcome and Check Result model, but the new
-CLI boundary applies only to bundle-owned checks. A later change can migrate
-built-in checkers after the CLI protocol has been used by a complete bundle.
+change. They adopt the shared Check Outcome and Check Result model. Checks in
+local bundles use Checker CLIs. A later change can migrate built-in checkers
+after the CLI protocol has been used by a complete bundle.
 
 The [Checker CLI contract comparison](experiments/checker-cli-contract-comparison/README.md)
 demonstrates mechanistic and judgment-based Checker CLIs running from a tested
@@ -359,9 +359,8 @@ project directory while finding resources installed with each Checker.
 ### Begin `codekiln-help` as one complete check
 
 The first `codekiln-help` bundle contains one hierarchical-help check. Its
-bundle-owned Checker CLI gathers the command hierarchy and help documents once,
-verifies all related behaviors, and returns one Check Result with focused Check
-Messages.
+Checker CLI gathers the command hierarchy and help documents once, verifies all
+related behaviors, and returns one Check Result with focused Check Messages.
 
 The checker will:
 
@@ -386,7 +385,7 @@ configuration, or reporting proves useful.
 - **Added programmatic guidance can appear more than once** → Check the final
   document returned by `--programmatic` and report repeated or misplaced
   guidance in a focused Check Message.
-- **A local bundle-owned Checker CLI runs code chosen by the bundle author** →
+- **A local bundle's Checker CLI runs code chosen by the bundle author** →
   Execute Checker CLIs only from explicitly installed bundles, keep execution
   out of the Clilint process, and document the permissions the CLI
   receives.
@@ -731,6 +730,12 @@ Check Message model. Bundle-owned checks use Checker CLIs.
 This makes `codekiln-help` the proof that a bundle can add behavior without a
 Clilint binary change. A later change can move built-in checks behind the CLI
 boundary after the protocol has been exercised by a concrete bundle.
+
+### 24 - Should Checks or Checker CLIs be called "bundle-owned"?
+
+No. `codekiln` chose **Check** and **Checker CLI**. Every Check belongs to a
+check bundle, so “bundle-owned” adds no distinction. When the implementation
+matters, the design distinguishes a Checker CLI from a built-in Rust checker.
 
 ## Open Questions
 

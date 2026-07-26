@@ -54,8 +54,8 @@ components.
 ## MODIFIED Requirements
 
 ### Requirement: Bundled global standard
-The Clilint binary SHALL include the core `clilint` check bundle and SHALL use
-it when the user has not installed another check bundle.
+Clilint SHALL include the core `clilint` check bundle and SHALL use it when the
+user has not installed another check bundle.
 
 #### Scenario: Check without an installed bundle
 - **WHEN** a user checks a tested CLI tool without installing another check bundle
@@ -83,17 +83,16 @@ from another check bundle.
 
 ### Requirement: Package validation
 Clilint SHALL reject check-bundle data containing an invalid built-in checker,
-an invalid bundle-owned Checker CLI, a duplicate check identifier, or an
-unsupported format version.
+an invalid Checker CLI, a duplicate check identifier, or an unsupported format
+version.
 
-#### Scenario: Invalid bundle-owned Checker CLI
+#### Scenario: Invalid Checker CLI
 - **WHEN** a check bundle declares an invalid Checker CLI
 - **THEN** Clilint exits nonzero and identifies the invalid Checker CLI
 
 ### Requirement: Offline checking
 Clilint SHALL load local check bundles and run built-in checks without network
-access. A bundle-owned Checker CLI is responsible for any network access its
-own check requires.
+access. A Checker CLI is responsible for any network access its Check requires.
 
 #### Scenario: Run an offline local checker
 - **WHEN** the selected local check bundles are available and their Checker CLIs do not request online evidence

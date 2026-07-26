@@ -2,7 +2,7 @@
 
 A check bundle is a named, versioned collection of checks. Clilint includes
 the core `clilint` bundle. A project can install local bundles that add checks
-without changing the Clilint binary.
+without changing Clilint.
 
 ## Install a local bundle
 
@@ -25,7 +25,7 @@ clilint bundle list [--json]
 clilint bundle remove <name>
 ```
 
-## Define a bundle-owned check
+## Define a check
 
 Create `clilint.toml` in the bundle directory:
 
@@ -48,11 +48,11 @@ type = "cli"
 command = ["python3", "{bundle}/checker.py"]
 ```
 
-Every bundle-owned check declares one Checker CLI command. Clilint replaces
-the literal `{bundle}` placeholder with the bundle directory and starts the
-command directly, without a shell. The Checker runs from the directory where
-the user invoked Clilint and finds its own bundled scripts, rubrics, Skills,
-and other resources.
+Every check in a local bundle declares one Checker CLI command. Clilint
+replaces the literal `{bundle}` placeholder with the bundle directory and
+starts the command directly, without a shell. The Checker runs from the
+directory where the user invoked Clilint and finds its own scripts, rubrics,
+Skills, and other resources.
 
 The command may name a native executable or an interpreter-backed CLI. The
 bundle author is responsible for making its runtime available on supported
@@ -102,9 +102,10 @@ messages and cannot contain Warning or Error messages.
 
 A Checker that cannot produce a result returns a Check Error without a Score.
 Clilint also creates a Check Error when a Checker times out, exits
-unsuccessfully, exceeds the protocol-output or retained-log limit, or returns
-invalid JSON. Clilint keeps only a bounded amount of Checker logs and marks
-the Check Error when it truncated them.
+unsuccessfully, writes too much data to standard output, writes too many logs
+to standard error, or returns invalid JSON. When the logs are too long, the
+Check Error contains the part that fits and states that Clilint cut the logs
+short.
 
 ## Use judgment
 
@@ -135,5 +136,4 @@ The built-in bundle at
 [`check-bundles/clilint/clilint.toml`](../check-bundles/clilint/clilint.toml)
 shows the built-in Rust checkers. The
 [`codekiln-help` bundle](../check-bundles/codekiln-help/clilint.toml) and its
-[implementation guide](codekiln-help.md) show a complete bundle-owned Checker
-CLI.
+[implementation guide](codekiln-help.md) show a complete Checker CLI.

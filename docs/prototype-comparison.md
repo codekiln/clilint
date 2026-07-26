@@ -37,9 +37,9 @@ mechanistic.
 - Check identifiers are scoped by check bundle. The core bundle is embedded in the binary, and local extensions can add checks or strengthen inherited severity.
 - JSON reports represent Check Result, Check Error, Awaiting Assessment, and
   Skipped as distinct outcomes.
-- `--assessment` accepts repeatable JSON Assessment files. Clilint validates
-  the Check, request, Skill, Score, messages, format version, and evidence
-  digest.
-- Built-in Checkers use Rust types. Each bundle-owned Check declares a Checker
-  CLI, which can use any programming language or tools behind the shared JSON
-  exchange.
+- `--assessment` accepts repeatable JSON Assessment files. Clilint checks that
+  each Assessment matches the Check, current evidence, and Skill, then
+  validates its Score, messages, and format version.
+- Built-in Checkers use Rust types. Each Check in a local bundle declares a
+  Checker CLI, which can use any programming language or tools through the
+  shared JSON exchange.

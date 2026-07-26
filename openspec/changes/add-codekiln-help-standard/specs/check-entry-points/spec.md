@@ -1,13 +1,13 @@
 ## ADDED Requirements
 
-### Requirement: Bundle-owned complete checks
-Each bundle-owned Check SHALL select one Checker CLI. The Checker CLI SHALL own
-any one-time setup, evidence gathering, and production of a Check Outcome
-needed for the complete Check.
+### Requirement: Complete checks through Checker CLIs
+Each Check in a local check bundle SHALL select one Checker CLI. The Checker
+CLI SHALL own any one-time setup, evidence gathering, and production of a Check
+Outcome needed for the complete Check.
 
 #### Scenario: Add a mechanistic check from a local bundle
 - **WHEN** a user installs a local check bundle whose Check names a valid Checker CLI
-- **THEN** Clilint can run the check without check-specific implementation in the Clilint binary
+- **THEN** Clilint can run the check without adding check-specific code to Clilint
 
 #### Scenario: One check verifies several related matters
 - **WHEN** one check gathers shared evidence and finds several unmet expectations
@@ -109,12 +109,12 @@ SHALL identify the check's method.
 - **THEN** the check is mechanistic
 
 ### Requirement: Checker CLI invocation
-Clilint SHALL run a bundle-owned Checker CLI outside the Clilint process from
-the directory in which the user invoked Clilint. A bundle SHALL name the CLI
-with a nonempty command argument array. Clilint SHALL replace the literal
-`{bundle}` placeholder in any argument with the installed bundle directory
-and invoke the command directly without a shell. The Checker SHALL inherit
-Clilint's environment and operating-system permissions.
+Clilint SHALL run a Checker CLI outside the Clilint process from the directory
+in which the user invoked Clilint. A bundle SHALL name the CLI with a nonempty
+command argument array. Clilint SHALL replace the literal `{bundle}`
+placeholder in any argument with the installed bundle directory and invoke the
+command directly without a shell. The Checker SHALL inherit Clilint's
+environment and operating-system permissions.
 
 #### Scenario: Interpreter-backed Checker CLI
 - **WHEN** a bundle declares `["python3", "{bundle}/checker.py"]`
@@ -144,7 +144,7 @@ NOT raise these limits in the first protocol.
 - **THEN** Clilint retains only the bounded amount and records that the logs were truncated
 
 #### Scenario: Bundle attempts to configure process limits
-- **WHEN** a bundle declares a timeout, output limit, or retained-log limit for its Checker CLI
+- **WHEN** a bundle declares a timeout or standard-output or standard-error limit for its Checker CLI
 - **THEN** Clilint rejects the unsupported field instead of changing its fixed process limits
 
 ### Requirement: Judgment-based Checker CLI

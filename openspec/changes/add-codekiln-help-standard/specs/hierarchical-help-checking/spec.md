@@ -2,9 +2,9 @@
 
 ### Requirement: One complete codekiln-help check
 The `codekiln-help` check bundle SHALL define one hierarchical-help check whose
-bundle-owned checker gathers the command hierarchy and help documents,
-verifies every help behavior in this specification, and returns one Check
-Result with one Score and zero or more Check Messages.
+Checker CLI gathers the command hierarchy and help documents, verifies every
+help behavior in this specification, and returns one Check Result with one
+Score and zero or more Check Messages.
 
 #### Scenario: Check a CLI tool that follows the standard
 - **WHEN** a user checks a nested CLI tool that follows the standard with the `codekiln-help` check bundle
@@ -14,7 +14,7 @@ Result with one Score and zero or more Check Messages.
 - **WHEN** one tested CLI tool has invalid command discovery and incomplete programmatic guidance
 - **THEN** one hierarchical-help Check Result contains focused Check Messages for both unmet expectations
 
-### Requirement: Bundle-owned hierarchical-help checker
+### Requirement: Hierarchical-help Checker CLI
 The `codekiln-help` bundle SHALL supply its hierarchical-help checker through
 the same Checker CLI protocol available to another installed check
 bundle. Clilint SHALL NOT contain a hierarchical-help checker type or
@@ -22,7 +22,7 @@ check-specific command traversal.
 
 #### Scenario: Bundle author implements an equivalent check
 - **WHEN** a bundle author installs another local bundle with an equivalent Checker CLI
-- **THEN** Clilint can run its check without a change to the Clilint binary
+- **THEN** Clilint can run its check without adding check-specific code to Clilint
 
 ### Requirement: Reused help evidence
 The hierarchical-help checker SHALL gather each needed help response once

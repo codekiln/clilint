@@ -4,18 +4,18 @@
 [![CI](https://github.com/codekiln/clilint/actions/workflows/ci.yml/badge.svg)](https://github.com/codekiln/clilint/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Clilint checks the behavior of command-line programs. It runs a program,
-scores each expectation from `0.0` through `4.0`, and gives focused messages
-that a person or coding agent can use to improve the program.
+Clilint checks the behavior of command-line programs. It gives each Check a
+Score from `0.0` through `4.0` and returns focused messages that a person or
+coding agent can use to improve the program.
 
 The built-in checks cover common help, version, error, output, and
 non-interactive behavior. Projects can install local check bundles for
-additional standards. Each bundle-owned check is a CLI, so its author can use
-any programming language, scripts, tools, or AI agent harness behind the same
-request and result format.
+additional standards. Each added Check names a Checker command-line program.
+The Checker can use any programming language, scripts, tools, or AI agents.
 
-Clilint is for people and teams building command-line tools, especially when a
-coding agent needs specific feedback rather than a single pass or fail.
+Clilint is for people and teams building command-line tools. Its Scores and
+Check Messages give coding agents specific feedback they can use to improve a
+tool.
 
 ## Project status
 

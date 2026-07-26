@@ -121,7 +121,7 @@ fn built_in_mechanistic(
         .as_ref()
         .ok_or_else(|| format!("mechanistic Check {} has no checker", check.id))?;
     let (passed, evidence, failures) = match checker {
-        CheckerDefinition::Invocation { invocation } => {
+        CheckerDefinition::SingleInvocation { invocation } => {
             let (observation, failures) = evaluate(invocation, runner)?;
             (
                 failures.is_empty(),
@@ -317,9 +317,9 @@ fn process_failure_message(process: &ProcessOutput) -> Option<String> {
     if process.timed_out {
         Some("Checker CLI timed out".into())
     } else if process.stdout_exceeded {
-        Some("Checker CLI exceeded the protocol output limit".into())
+        Some("Checker CLI wrote too much data to standard output".into())
     } else if process.stderr_exceeded {
-        Some("Checker CLI exceeded the retained-log limit".into())
+        Some("Checker CLI wrote too many logs to standard error".into())
     } else if process.exit_status != Some(0) {
         Some(format!(
             "Checker CLI exited with status {}",
@@ -664,13 +664,13 @@ mod tests {
         assert!(
             process_failure_message(&output(Some(0), false, true, false))
                 .unwrap()
-                .contains("protocol output")
+                .contains("standard output")
         );
         let logs = output(Some(0), false, false, true);
         assert!(
             process_failure_message(&logs)
                 .unwrap()
-                .contains("retained-log")
+                .contains("standard error")
         );
         assert!(process_error("error", logs).logs_truncated);
         assert!(

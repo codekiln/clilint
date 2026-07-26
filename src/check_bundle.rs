@@ -53,7 +53,7 @@ pub struct CheckDefinition {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum CheckerDefinition {
-    Invocation {
+    SingleInvocation {
         #[serde(flatten)]
         invocation: InvocationCheck,
     },
@@ -113,7 +113,7 @@ fn reject_unknown_checker_fields(document: &toml::Value, source: &str) -> Result
             continue;
         };
         let allowed: &[&str] = match checker_type {
-            "invocation" => &["type", "args", "env", "stdin", "timeout_ms", "assertions"],
+            "single-invocation" => &["type", "args", "env", "stdin", "timeout_ms", "assertions"],
             "any-invocation" | "all-invocations" => &["type", "invocations"],
             "cli" => &["type", "command"],
             _ => continue,
@@ -178,7 +178,7 @@ pub fn validate(bundle: &CheckBundleManifest) -> Result<(), String> {
                         || check.evidence.is_some())
                 {
                     return Err(format!(
-                        "bundle-owned judgment-based check {} must have one Checker CLI and no host-managed judgment fields",
+                        "judgment-based check {} in a local bundle must declare one Checker CLI and omit [checks.skill] and [checks.evidence]",
                         check.id
                     ));
                 }
@@ -195,7 +195,7 @@ pub fn validate(bundle: &CheckBundleManifest) -> Result<(), String> {
             )
         {
             return Err(format!(
-                "bundle-owned check {} must declare a nonempty Checker CLI command",
+                "check {} in a local bundle must declare a nonempty Checker CLI command",
                 check.id
             ));
         }

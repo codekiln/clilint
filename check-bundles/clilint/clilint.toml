@@ -22,7 +22,7 @@ title = "Unknown flags exit non-zero"
 severity = "error"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--clilint-nonexistent-flag-zzz"]
 assertions = [{ type = "not-timed-out" }, { type = "exit-non-zero" }]
 
@@ -32,7 +32,7 @@ title = "Help and primary output go to stdout"
 severity = "error"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--help"]
 assertions = [{ type = "stdout-not-empty" }, { type = "stdout-at-least-stderr" }]
 
@@ -42,7 +42,7 @@ title = "Error messages go to stderr"
 severity = "error"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--clilint-nonexistent-flag-zzz"]
 assertions = [{ type = "stderr-not-empty" }]
 
@@ -52,7 +52,7 @@ title = "Errors name the problem"
 severity = "warn"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--clilint-nonexistent-flag-zzz"]
 assertions = [{ type = "output-contains-any", values = ["unknown", "unrecognized", "invalid", "no such", "error", "usage", "--clilint-nonexistent-flag-zzz"] }]
 
@@ -62,7 +62,7 @@ title = "Errors point the user toward help"
 severity = "warn"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--clilint-nonexistent-flag-zzz"]
 assertions = [{ type = "output-contains-any", values = ["--help", "-h", "help", "usage", "try"] }]
 
@@ -72,7 +72,7 @@ title = "--help prints help on stdout and exits zero"
 severity = "error"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--help"]
 assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }, { type = "stdout-not-empty" }]
 
@@ -82,7 +82,7 @@ title = "-h is a help alias"
 severity = "warn"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["-h"]
 assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }, { type = "stdout-not-empty" }]
 
@@ -92,7 +92,7 @@ title = "Help includes a usage synopsis"
 severity = "warn"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--help"]
 assertions = [{ type = "stdout-contains-any", values = ["usage", "synopsis"] }]
 
@@ -115,7 +115,7 @@ title = "Help responds within two seconds"
 severity = "warn"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--help"]
 assertions = [{ type = "duration-at-most", milliseconds = 2000.0 }]
 
@@ -125,7 +125,7 @@ title = "No-argument invocation does not hang"
 severity = "error"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = []
 assertions = [{ type = "not-timed-out" }]
 
@@ -135,7 +135,7 @@ title = "--version prints a version number and exits zero"
 severity = "warn"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--version"]
 assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }, { type = "version-number" }]
 
@@ -145,7 +145,7 @@ title = "-V is a version alias"
 severity = "info"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["-V"]
 assertions = [{ type = "not-timed-out" }, { type = "exit-code", value = 0 }, { type = "version-number" }]
 
@@ -155,7 +155,7 @@ title = "Help advertises a machine-readable output mode"
 severity = "warn"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--help"]
 assertions = [{ type = "stdout-contains-any", values = ["--json", "--format", "--plain", "--output", "-o "] }]
 
@@ -165,7 +165,7 @@ title = "Help advertises a non-interactive mode"
 severity = "warn"
 evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
+type = "single-invocation"
 args = ["--help"]
 assertions = [{ type = "stdout-contains-any", values = ["--no-input", "--non-interactive", "--yes", "--force", "--batch", "-y"] }]
 

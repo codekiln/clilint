@@ -1,4 +1,5 @@
-# Worked example: docs/check-bundles.md explains this file, its checker, and fixtures.
+# Worked example: docs/codekiln-help.md follows this Check through its Checker
+# CLI, fixtures, and report output.
 format_version = 1
 extends = "clilint"
 
@@ -7,92 +8,11 @@ name = "codekiln-help"
 version = "0.1.0"
 
 [[checks]]
-id = "codekiln-help/help/available"
-title = "Help is available at every command path"
+id = "codekiln-help/help/hierarchical"
+title = "Help is navigable at every command path"
 severity = "error"
-evaluation_method = "deterministic"
-[checks.checker]
-type = "hierarchical-help"
-behavior = "availability"
+evaluation_method = "mechanistic"
 
-[[checks]]
-id = "codekiln-help/help/command-discovery"
-title = "JSON help discovers the complete command hierarchy"
-severity = "error"
-evaluation_method = "deterministic"
 [checks.checker]
-type = "hierarchical-help"
-behavior = "command-discovery"
-
-[[checks]]
-id = "codekiln-help/help/outline"
-title = "Each command document provides a valid outline"
-severity = "error"
-evaluation_method = "deterministic"
-[checks.checker]
-type = "hierarchical-help"
-behavior = "outline"
-
-[[checks]]
-id = "codekiln-help/help/sections"
-title = "Advertised sections can be retrieved"
-severity = "error"
-evaluation_method = "deterministic"
-[checks.checker]
-type = "hierarchical-help"
-behavior = "section-retrieval"
-
-[[checks]]
-id = "codekiln-help/help/shared"
-title = "Default help serves people and programmatic callers"
-severity = "error"
-evaluation_method = "deterministic"
-[checks.checker]
-type = "hierarchical-help"
-behavior = "shared-help"
-
-[[checks]]
-id = "codekiln-help/help/programmatic"
-title = "Programmatic help retains default help and adds efficient-use guidance"
-severity = "error"
-evaluation_method = "deterministic"
-[checks.checker]
-type = "hierarchical-help"
-behavior = "programmatic-guidance"
-
-[[checks]]
-id = "codekiln-help/help/search"
-title = "Local help can be searched offline"
-severity = "error"
-evaluation_method = "deterministic"
-[checks.checker]
-type = "hierarchical-help"
-behavior = "search"
-
-[[checks]]
-id = "codekiln-help/help/non-interactive"
-title = "Captured help is plain and non-interactive"
-severity = "error"
-evaluation_method = "deterministic"
-[checks.checker]
-type = "hierarchical-help"
-behavior = "non-interactive-output"
-
-[[checks]]
-id = "codekiln-help/help/local-view"
-title = "The local viewer writes the document when captured"
-severity = "error"
-evaluation_method = "deterministic"
-[checks.checker]
-type = "hierarchical-help"
-behavior = "local-view"
-
-[[checks]]
-id = "codekiln-help/help/web-view"
-title = "The web viewer resolves a versioned page when captured"
-severity = "error"
-evaluation_method = "deterministic"
-required_for_ratings = ["good", "excellent"]
-[checks.checker]
-type = "hierarchical-help"
-behavior = "web-view"
+type = "cli"
+command = ["python3", "{bundle}/checker.py"]

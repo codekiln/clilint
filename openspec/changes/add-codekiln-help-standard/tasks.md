@@ -59,16 +59,16 @@ starts from the smaller supported surface.
 
 - [x] 6.1 Open issue #8 for Git sourcing, ref resolution, the lockfile, and the data and cache directories, carrying over resolved questions 10 through 14
 - [x] 6.2 Open issue #9 for rich local viewing and web viewing, recording the `gh` precedent and the clig.dev constraints
-- [ ] 6.3 Reduce `BundleSource` and `.clilint/config.toml` loading to local bundle paths
-- [ ] 6.4 Store installed local paths relative to the project directory and test project subdirectories and sibling bundle paths containing `..`
-- [ ] 6.5 Remove `bundle lock`, `bundle update`, `--locked`, and `--offline` from the CLI and update CLI parsing tests
-- [ ] 6.6 Remove Git fetching, ref resolution, the lockfile, data and cache directories, missing-bundle restoration, and their dependencies from `src/project_config.rs`
-- [ ] 6.7 Replace Git, lockfile, cache, and offline-restoration integration tests with local-path loading, listing, removal, and failure tests
-- [ ] 6.8 Remove local and web viewer checks, fixture behavior, `--version` support added for web URLs, and their tests
-- [ ] 6.9 Remove viewer and remote-installation text from the focused guides and other product documentation
-- [ ] 6.10 Remove `check_bundle::load_resolved`, which `project_config::load_for_check` superseded
+- [x] 6.3 Reduce `BundleSource` and `.clilint/config.toml` loading to local bundle paths
+- [x] 6.4 Store installed local paths relative to the project directory and test project subdirectories and sibling bundle paths containing `..`
+- [x] 6.5 Remove `bundle lock`, `bundle update`, `--locked`, and `--offline` from the CLI and update CLI parsing tests
+- [x] 6.6 Remove Git fetching, ref resolution, the lockfile, data and cache directories, missing-bundle restoration, and their dependencies from `src/project_config.rs`
+- [x] 6.7 Replace Git, lockfile, cache, and offline-restoration integration tests with local-path loading, listing, removal, and failure tests
+- [x] 6.8 Remove local and web viewer checks, fixture behavior, viewer-specific version validation, and their tests
+- [x] 6.9 Remove viewer and remote-installation text from the focused guides and other product documentation
+- [x] 6.10 Remove `check_bundle::load_resolved`, which `project_config::load_for_check` superseded
 - [x] 6.11 Give each prototype its own named subfolder under `experiments/`, with a README describing what it tests and how to run it
-- [ ] 6.12 Run format, lint, tests, and strict OpenSpec validation after the reductions
+- [x] 6.12 Run format, lint, tests, and strict OpenSpec validation after the reductions
 
 ## 7. Resolve the First Protocol Details
 
@@ -77,8 +77,7 @@ The [Q16 follow-up task review](q16-follow-up-task-review.md) maps the stale
 implementation and the work that follows. Questions 18 and 22 settle the
 shared result model and terms. Answer 23 requires a Checker CLI for every
 bundle-owned Check and keeps the project as its working directory. Questions
-19 through 21 record the protocol choices still needed before application
-code changes.
+19 through 21 record the protocol choices used by the application work.
 
 - [x] 7.1 Hold a dedicated OpenSpec explore session on question 16 and record the answer in `design.md`
   - a first session ran on 2026-07-25 and restated question 16 rather than
@@ -88,66 +87,66 @@ code changes.
     entry point with host-managed lifecycle phases
 - [x] 7.2 Have `codekiln` answer questions 18 and 22 in `design.md` and define Check Outcome, Check Result, Score, Check Message, Assessment, and mechanistic versus judgment-based checks
 - [x] 7.3 Compare mechanistic and judgment-based Checker CLI prototypes and record `codekiln`'s answer 23 in `design.md`
-- [ ] 7.4 Have `codekiln` answer questions 19 through 21 in `design.md`
-- [ ] 7.5 After each remaining answer, replace its placeholder with the project-owner answer and reconcile the decisions, delta specs, and remaining tasks
+- [x] 7.4 Settle questions 19 through 21 from the established project-owner preferences and record the drafting-agent decisions in `design.md`
+- [x] 7.5 Replace the placeholders and reconcile the decisions, delta specs, and remaining tasks
 
 ## 8. Add the Check Outcome and Check Result Model
 
-- [ ] 8.1 Add versioned Check Request, Check Outcome, Check Result, Check Error, Score, Check Message, and judgment-based Assessment types with strict unknown-field validation
-- [ ] 8.2 Make Check Result, Check Error, Awaiting Assessment, and Skipped mutually exclusive Check Outcomes
-- [ ] 8.3 Accept finite fractional Scores from `0.0` through `4.0` and enforce the settled Check Message rules for imperfect and perfect Scores
-- [ ] 8.4 Bind each Check Outcome to its request, check identifier, and check-bundle identity and reject mismatches
-- [ ] 8.5 Count Check Results, Check Errors, and Check Message levels separately and derive process exit status from Check Errors and Error-level Check Messages rather than Score
-- [ ] 8.6 Adapt built-in checker outcomes to the new model according to answer 21
-- [ ] 8.7 Update JSON and human reports to present Scores, Check Messages, Check Errors, and mechanistic or judgment-based methods separately
-- [ ] 8.8 Add serialization, range, message-rule, mismatch, summary, and exit-status tests for the new model
+- [x] 8.1 Add versioned Check Request, Check Outcome, Check Result, Check Error, Score, Check Message, and judgment-based Assessment types with strict unknown-field validation
+- [x] 8.2 Make Check Result, Check Error, Awaiting Assessment, and Skipped mutually exclusive Check Outcomes
+- [x] 8.3 Accept finite fractional Scores from `0.0` through `4.0` and enforce the settled Check Message rules for imperfect and perfect Scores
+- [x] 8.4 Bind each Check Outcome to its request, check identifier, and check-bundle identity and reject mismatches
+- [x] 8.5 Count Check Results, Check Errors, and Check Message levels separately and derive process exit status from Check Errors and Error-level Check Messages rather than Score
+- [x] 8.6 Adapt built-in checker outcomes to the new model according to answer 21
+- [x] 8.7 Update JSON and human reports to present Scores, Check Messages, Check Errors, and mechanistic or judgment-based methods separately
+- [x] 8.8 Add serialization, range, message-rule, mismatch, summary, and exit-status tests for the new model
 
 ## 9. Add the Checker CLI Protocol
 
-- [ ] 9.1 Preserve each loaded check bundle's source directory long enough to resolve its Checker CLI
-- [ ] 9.2 Add strict manifest validation for one bundle-owned Checker CLI per Check and reject CLI paths outside the bundle directory
-- [ ] 9.3 Construct the versioned request with the tested CLI tool, project directory, protocol version, and Check identity
-- [ ] 9.4 Run the Checker CLI from the directory in which the user invoked Clilint with the settled environment, JSON input, timeout, and output-limit rules
-- [ ] 9.5 Keep Check Outcome JSON on standard output, enforce hard ceilings on configured output and log limits, retain only bounded checker logs from standard error, and mark truncated logs
-- [ ] 9.6 Convert nonzero exit, timeout, excessive output, and malformed protocol output into a Check Error without a Score
-- [ ] 9.7 Add a small local proof bundle whose Checker CLI finds its installed resources, gathers evidence, and returns one Score with several Check Messages without check-specific Rust code
-- [ ] 9.8 Add unit and integration tests for project-directory execution, Checker resource resolution, language-independent request exchange, bounded memory, protocol errors, Checker logs, and the proof bundle
+- [x] 9.1 Preserve each loaded check bundle's source directory long enough to resolve its Checker CLI
+- [x] 9.2 Add strict manifest validation for one nonempty Checker CLI command array per bundle-owned Check and expand the literal `{bundle}` placeholder in its arguments
+- [x] 9.3 Construct the versioned request with the tested CLI tool, project directory, protocol version, and Check identity
+- [x] 9.4 Invoke the Checker CLI directly without a shell from the directory in which the user invoked Clilint, inherit the environment, and send one JSON request on standard input
+- [x] 9.5 Keep one Check Outcome JSON document on standard output, apply fixed process and output limits, retain only bounded Checker logs from standard error, and mark truncated logs
+- [x] 9.6 Convert nonzero exit, timeout, excessive output, and malformed protocol output into a Check Error without a Score
+- [x] 9.7 Add a small local proof bundle whose Checker CLI finds its installed resources, gathers evidence, and returns one Score with several Check Messages without check-specific Rust code
+- [x] 9.8 Add unit and integration tests for project-directory execution, Checker resource resolution, language-independent request exchange, bounded memory, protocol errors, Checker logs, and the proof bundle
 
 ## 10. Add the Judgment-Based Checker CLI Handoff
 
-- [ ] 10.1 Define the Awaiting Assessment data that a judgment-based Checker CLI may return, including the request binding and any Skill, rubric, and evidence needed by an external agent
-- [ ] 10.2 Require the Checker CLI to resolve its own Agent Skill, rubric, and other installed resources
-- [ ] 10.3 Implement the handoff chosen in answer 20 and document the external agent's expected input and output
-- [ ] 10.4 Require the Checker CLI to validate the returned Assessment before producing a request-bound Check Result
-- [ ] 10.5 Replace the stale `AssessmentDocument` and evidence-digest attachment interfaces according to answer 20
-- [ ] 10.6 Update `assess-cli-help` or add a focused judgment-based Checker CLI whose bundled Skill records an Assessment and whose CLI returns the shared Check Result
-- [ ] 10.7 Keep agent-harness operational logs outside Check Results and avoid requiring a model-specific or harness-specific log format
-- [ ] 10.8 Add tests for pending requests, valid attachment, wrong request, wrong check, wrong Skill, repeated attachment, and invalid Scores or Check Messages
+- [x] 10.1 Define the Awaiting Assessment data that a judgment-based Checker CLI may return, including the request binding and any Skill, rubric, and evidence needed by an external agent
+- [x] 10.2 Require the Checker CLI to resolve its own Agent Skill, rubric, and other installed resources
+- [x] 10.3 Record pending Assessment work in the report, accept one Assessment JSON file on a later Clilint invocation, and document the external agent's expected input and output
+- [x] 10.4 Require the Checker CLI to validate the returned Assessment before producing a request-bound Check Result
+- [x] 10.5 Replace the stale `AssessmentDocument` and evidence-digest attachment interfaces according to answer 20
+- [x] 10.6 Update `assess-cli-help` or add a focused judgment-based Checker CLI whose bundled Skill records an Assessment and whose CLI returns the shared Check Result
+- [x] 10.7 Keep agent-harness operational logs outside Check Results and avoid requiring a model-specific or harness-specific log format
+- [x] 10.8 Add tests for pending requests, valid attachment, wrong request, wrong check, wrong Skill, repeated attachment, and invalid Scores or Check Messages
 
 ## 11. Replace the Fixed Hierarchical-Help Checker
 
-- [ ] 11.1 Replace the ten `codekiln-help` manifest checks with one Checker CLI for the complete hierarchical-help Check
-- [ ] 11.2 Port command discovery, JSON parsing, outline, section, shared-help, programmatic-guidance, search, and non-interactive behavior into the bundle-owned Checker CLI
-- [ ] 11.3 Return one Check Result with a Score, focused Check Messages, and shared evidence instead of copying every observation into each message
-- [ ] 11.4 Make command-count, command-depth, document-size, search-result, total-command, and per-command timeout limits independently reachable and report the exceeded limit directly
-- [ ] 11.5 Reject unknown checker configuration fields and add a regression test for a misspelled timeout field
-- [ ] 11.6 Add black-box regressions for incomplete programmatic guidance, empty search results, exhausted command budgets, malformed relationships, and deeply nested failures
-- [ ] 11.7 Confirm an independently authored local bundle can implement an equivalent complete Check through the same Checker CLI protocol
-- [ ] 11.8 Remove `HierarchicalHelp`, `HierarchicalHelpBehavior`, `HelpLimits`, the special `HelpContext` engine path, and `src/help_checker.rs` after the replacement tests pass
-- [ ] 11.9 Remove tests and report fixtures that require one Clilint result per help behavior
+- [x] 11.1 Replace the ten `codekiln-help` manifest checks with one Checker CLI for the complete hierarchical-help Check
+- [x] 11.2 Port command discovery, JSON parsing, outline, section, shared-help, programmatic-guidance, search, and non-interactive behavior into the bundle-owned Checker CLI
+- [x] 11.3 Return one Check Result with a Score, focused Check Messages, and shared evidence instead of copying every observation into each message
+- [x] 11.4 Make command-count, command-depth, document-size, search-result, total-command, and per-command timeout limits independently reachable and report the exceeded limit directly
+- [x] 11.5 Reject unknown checker configuration fields and add a regression test for a misspelled timeout field
+- [x] 11.6 Add black-box regressions for incomplete programmatic guidance, empty search results, exhausted command budgets, malformed relationships, and deeply nested failures
+- [x] 11.7 Confirm an independently authored local bundle can implement an equivalent complete Check through the same Checker CLI protocol
+- [x] 11.8 Remove `HierarchicalHelp`, `HierarchicalHelpBehavior`, `HelpLimits`, the special `HelpContext` engine path, and `src/help_checker.rs` after the replacement tests pass
+- [x] 11.9 Remove tests and report fixtures that require one Clilint result per help behavior
 
 ## 12. Update Documentation
 
-- [ ] 12.1 Rewrite the check-bundle guide around local sources, one Checker CLI per bundle-owned Check, project-directory execution, Check Outcomes, Check Results, and Check Messages
-- [ ] 12.2 Rewrite the `codekiln-help` guide around its one complete check and link its bundle, checker, fixtures, and black-box tests
-- [ ] 12.3 Document the Checker CLI protocol, bounded Checker logs, judgment-based handoff, trust boundary, failure behavior, and report format
-- [ ] 12.4 Update the README and run both README assessment skills, resolving each finding or recording an accepted exception
-- [ ] 12.5 Update source and test links so a bundle author can follow each worked example without searching
+- [x] 12.1 Rewrite the check-bundle guide around local sources, one Checker CLI per bundle-owned Check, project-directory execution, Check Outcomes, Check Results, and Check Messages
+- [x] 12.2 Rewrite the `codekiln-help` guide around its one complete check and link its bundle, checker, fixtures, and black-box tests
+- [x] 12.3 Document the Checker CLI protocol, bounded Checker logs, judgment-based handoff, trust boundary, failure behavior, and report format
+- [x] 12.4 Update the README and run both README assessment skills, resolving each finding or recording an accepted exception
+- [x] 12.5 Update source and test links so a bundle author can follow each worked example without searching
 
 ## 13. Verify and Prepare for Archive
 
-- [ ] 13.1 Run formatting, Clippy, tests, and strict OpenSpec validation through the project mise tasks
-- [ ] 13.2 Run every experiment and record any result that changes the design
-- [ ] 13.3 Run the lefthook pre-commit secret scan
-- [ ] 13.4 Verify the implementation against the proposal, design, and every delta specification
+- [x] 13.1 Run formatting, Clippy, tests, and strict OpenSpec validation through the project mise tasks
+- [x] 13.2 Run every experiment and record any result that changes the design
+- [x] 13.3 Run the lefthook pre-commit secret scan
+- [x] 13.4 Verify the implementation against the proposal, design, and every delta specification
 - [ ] 13.5 Run the spec-sync workflow before archiving the change

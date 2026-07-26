@@ -1,170 +1,174 @@
 use std::{fs, path::Path};
 
-use serde::{Deserialize, Serialize};
+use crate::model::{Assessment, AssessmentProvenance, CheckResult, SkillRef};
 
-use crate::model::{AssessmentProvenance, EvaluationMethod, Report, ResultStatus, SkillRef};
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct AssessmentDocument {
-    pub format_version: u32,
-    pub check: String,
-    pub result: ResultStatus,
-    pub explanation: String,
-    pub skill: SkillRef,
-    pub evidence_digest: String,
-    #[serde(default)]
-    pub assessor: Option<String>,
-}
-
-pub fn load(path: &Path) -> Result<AssessmentDocument, String> {
+pub fn load(path: &Path) -> Result<Assessment, String> {
     let text = fs::read_to_string(path)
-        .map_err(|error| format!("could not read assessment {}: {error}", path.display()))?;
-    match path.extension().and_then(|extension| extension.to_str()) {
-        Some("json") => serde_json::from_str(&text)
-            .map_err(|error| format!("invalid assessment {}: {error}", path.display())),
-        _ => toml::from_str(&text)
-            .map_err(|error| format!("invalid assessment {}: {error}", path.display())),
-    }
+        .map_err(|error| format!("could not read Assessment {}: {error}", path.display()))?;
+    serde_json::from_str(&text)
+        .map_err(|error| format!("invalid Assessment {}: {error}", path.display()))
 }
 
-pub fn attach(report: &mut Report, document: AssessmentDocument) -> Result<(), String> {
-    if document.format_version != 1 {
+pub fn validate(
+    assessment: &Assessment,
+    request_id: &str,
+    check: &str,
+    skill: &SkillRef,
+    evidence_digest: &str,
+) -> Result<CheckResult, String> {
+    if assessment.format_version != 1 {
         return Err(format!(
-            "assessment for {} uses unsupported format version {}",
-            document.check, document.format_version
+            "Assessment for {} uses unsupported format version {}",
+            assessment.check, assessment.format_version
         ));
     }
-    if document.result == ResultStatus::Unassessed {
+    if assessment.request_id != request_id {
         return Err(format!(
-            "assessment for {} cannot use result unassessed",
-            document.check
+            "Assessment for {} belongs to request {}, expected {}",
+            assessment.check, assessment.request_id, request_id
         ));
     }
-    let finding = report
-        .findings
-        .iter_mut()
-        .find(|finding| finding.check == document.check)
-        .ok_or_else(|| format!("assessment references unknown check {}", document.check))?;
-    if finding.evaluation_method != EvaluationMethod::AiAgent {
+    if assessment.check != check {
         return Err(format!(
-            "assessment check {} is not an AI-agent check",
-            document.check
+            "Assessment references Check {}, expected {check}",
+            assessment.check
         ));
     }
-    if finding.assessment.is_some() {
+    if &assessment.skill != skill {
         return Err(format!(
-            "more than one assessment was supplied for check {}",
-            document.check
+            "Assessment for {} uses Skill {} {}, expected {} {}",
+            assessment.check,
+            assessment.skill.name,
+            assessment.skill.version,
+            skill.name,
+            skill.version
         ));
     }
-    let expected_skill = finding
-        .required_skill
-        .as_ref()
-        .ok_or_else(|| format!("check {} has no required skill", document.check))?;
-    if &document.skill != expected_skill {
+    if assessment.evidence_digest != evidence_digest {
         return Err(format!(
-            "assessment for {} uses skill {} {}, expected {} {}",
-            document.check,
-            document.skill.name,
-            document.skill.version,
-            expected_skill.name,
-            expected_skill.version
+            "Assessment for {} has stale evidence digest {}, expected {}",
+            assessment.check, assessment.evidence_digest, evidence_digest
         ));
     }
-    if document.evidence_digest != finding.evidence_digest {
-        return Err(format!(
-            "assessment for {} has stale evidence digest {}, expected {}",
-            document.check, document.evidence_digest, finding.evidence_digest
-        ));
-    }
-
-    finding.result = document.result;
-    finding.detail = document.explanation;
-    finding.assessment = Some(AssessmentProvenance {
-        skill: document.skill,
-        assessor: document.assessor,
-    });
-    Ok(())
+    let result = CheckResult {
+        score: assessment.score,
+        messages: assessment.messages.clone(),
+        assessment: Some(AssessmentProvenance {
+            skill: assessment.skill.clone(),
+            explanation: assessment.explanation.clone(),
+            assessor: assessment.assessor.clone(),
+        }),
+    };
+    result.validate()?;
+    Ok(result)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{
-        CheckBundleIdentity, DeterministicSummary, Finding, ResultCounts, Severity,
-    };
+    use crate::model::{CheckMessage, CheckMessageLevel, Score};
 
-    fn report() -> Report {
-        Report {
-            format_version: 2,
-            tool_version: "0.0.2".into(),
-            check_bundles: vec![CheckBundleIdentity {
-                name: "clilint".into(),
-                version: "0.0.2".into(),
-            }],
-            target: "fixture".into(),
-            deterministic: DeterministicSummary::default(),
-            ai_agent: ResultCounts::default(),
-            findings: vec![Finding {
-                check: "clilint/help/useful-example".into(),
-                title: "Useful help".into(),
-                severity: Severity::Warn,
-                evaluation_method: EvaluationMethod::AiAgent,
-                result: ResultStatus::Unassessed,
-                required_for_ratings: Vec::new(),
-                detail: String::new(),
-                evidence: serde_json::json!({"help": "text"}),
-                evidence_digest: "sha256:abc".into(),
-                required_skill: Some(SkillRef {
-                    name: "assess-cli-help".into(),
-                    version: "1.0.0".into(),
-                }),
-                assessment: None,
-            }],
+    fn skill() -> SkillRef {
+        SkillRef {
+            name: "assess-cli-help".into(),
+            version: "1.0.0".into(),
         }
     }
 
-    fn document() -> AssessmentDocument {
-        AssessmentDocument {
+    fn assessment() -> Assessment {
+        Assessment {
             format_version: 1,
+            request_id: "request-1".into(),
             check: "clilint/help/useful-example".into(),
-            result: ResultStatus::Pass,
-            explanation: "The example teaches a likely task.".into(),
-            skill: SkillRef {
-                name: "assess-cli-help".into(),
-                version: "1.0.0".into(),
-            },
             evidence_digest: "sha256:abc".into(),
+            skill: skill(),
+            score: Score::new(3.5).unwrap(),
+            messages: vec![CheckMessage {
+                level: CheckMessageLevel::Warning,
+                message: "Add an example of a likely task.".into(),
+                evidence: serde_json::Value::Null,
+            }],
+            explanation: "The help provides a useful but incomplete example.".into(),
             assessor: Some("test".into()),
         }
     }
 
     #[test]
-    fn attaches_matching_assessment() {
-        let mut report = report();
-        attach(&mut report, document()).unwrap();
-        assert_eq!(report.findings[0].result, ResultStatus::Pass);
+    fn validates_matching_assessment() {
+        let result = validate(
+            &assessment(),
+            "request-1",
+            "clilint/help/useful-example",
+            &skill(),
+            "sha256:abc",
+        )
+        .unwrap();
+        assert_eq!(result.score.value(), 3.5);
     }
 
     #[test]
     fn rejects_stale_assessment() {
-        let mut report = report();
-        let mut document = document();
+        let mut document = assessment();
         document.evidence_digest = "sha256:stale".into();
-        assert!(attach(&mut report, document).unwrap_err().contains("stale"));
-        assert_eq!(report.findings[0].result, ResultStatus::Unassessed);
+        assert!(
+            validate(
+                &document,
+                "request-1",
+                "clilint/help/useful-example",
+                &skill(),
+                "sha256:abc",
+            )
+            .unwrap_err()
+            .contains("stale")
+        );
+    }
+
+    #[test]
+    fn rejects_wrong_request() {
+        let document = assessment();
+        assert!(
+            validate(
+                &document,
+                "request-2",
+                "clilint/help/useful-example",
+                &skill(),
+                "sha256:abc",
+            )
+            .unwrap_err()
+            .contains("expected request-2")
+        );
+    }
+
+    #[test]
+    fn rejects_wrong_check() {
+        let document = assessment();
+        assert!(
+            validate(
+                &document,
+                "request-1",
+                "clilint/help/another-check",
+                &skill(),
+                "sha256:abc",
+            )
+            .unwrap_err()
+            .contains("expected clilint/help/another-check")
+        );
     }
 
     #[test]
     fn rejects_wrong_skill() {
-        let mut report = report();
-        let mut document = document();
+        let mut document = assessment();
         document.skill.name = "other".into();
         assert!(
-            attach(&mut report, document)
-                .unwrap_err()
-                .contains("expected")
+            validate(
+                &document,
+                "request-1",
+                "clilint/help/useful-example",
+                &skill(),
+                "sha256:abc",
+            )
+            .unwrap_err()
+            .contains("expected")
         );
     }
 }

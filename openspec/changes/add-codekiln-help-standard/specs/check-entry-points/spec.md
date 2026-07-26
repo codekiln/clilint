@@ -23,8 +23,8 @@ without using the bundle directory as its process working directory.
 - **WHEN** a Checker CLI uses a rubric installed beside its executable or language package
 - **THEN** the Checker can read the rubric while its process working directory remains the tested project
 
-#### Scenario: Resource path leaves the bundle
-- **WHEN** a check declares a Checker CLI path that resolves outside its bundle directory
+#### Scenario: Empty Checker command
+- **WHEN** a check declares an empty Checker CLI command
 - **THEN** Clilint rejects the bundle before running the check
 
 ### Requirement: Versioned check exchange
@@ -110,13 +110,22 @@ SHALL identify the check's method.
 
 ### Requirement: Checker CLI invocation
 Clilint SHALL run a bundle-owned Checker CLI outside the Clilint process from
-the directory in which the user invoked Clilint. Clilint SHALL exchange the
-request and Check Outcome as JSON, bound the CLI's run time and output, and
-preserve bounded Checker logs separately from the Check Outcome. Standard
-output SHALL contain only the versioned protocol document. Standard error
-SHALL contain Checker logs. Clilint SHALL state when retained logs were
-truncated, SHALL NOT buffer either stream without a limit, and SHALL apply a
-hard ceiling to configured output and log-retention limits.
+the directory in which the user invoked Clilint. A bundle SHALL name the CLI
+with a nonempty command argument array. Clilint SHALL replace the literal
+`{bundle}` placeholder in any argument with the installed bundle directory
+and invoke the command directly without a shell. The Checker SHALL inherit
+Clilint's environment and operating-system permissions.
+
+#### Scenario: Interpreter-backed Checker CLI
+- **WHEN** a bundle declares `["python3", "{bundle}/checker.py"]`
+- **THEN** Clilint expands the script path and invokes Python directly without interpreting the Checker's language
+
+Clilint SHALL write one JSON Check Request to standard input and close it.
+Standard output SHALL contain only one versioned JSON Check Outcome. Standard
+error SHALL contain Checker logs. Clilint SHALL apply fixed limits to run time,
+protocol output, and retained logs. It SHALL state when retained logs were
+truncated and SHALL NOT buffer either stream without a limit. A bundle SHALL
+NOT raise these limits in the first protocol.
 
 #### Scenario: Checker CLI inherits the project directory
 - **WHEN** a user invokes Clilint from a project directory
@@ -134,15 +143,16 @@ hard ceiling to configured output and log-retention limits.
 - **WHEN** a Checker CLI writes more standard error than Clilint's configured retention limit
 - **THEN** Clilint retains only the bounded amount and records that the logs were truncated
 
-#### Scenario: Bundle requests excessive retention
-- **WHEN** a bundle requests an output or log-retention limit above Clilint's hard ceiling
-- **THEN** Clilint rejects the unsupported limit instead of allocating the requested amount
+#### Scenario: Bundle attempts to configure process limits
+- **WHEN** a bundle declares a timeout, output limit, or retained-log limit for its Checker CLI
+- **THEN** Clilint rejects the unsupported field instead of changing its fixed process limits
 
 ### Requirement: Judgment-based Checker CLI
 A judgment-based Checker CLI SHALL be able to use an Agent Skill, rubric,
 model, agent harness, or other tools without requiring another Clilint checker
 implementation. The CLI MAY return Awaiting Assessment and later accept an
-Assessment bound to the same Check Request before returning a Check Result.
+Assessment bound to the same Check Request through Clilint's file-based
+Assessment handoff before returning a Check Result.
 
 #### Scenario: Agent completes a pending check
 - **WHEN** an external agent follows the Skill exposed by a Checker CLI and supplies an Assessment bound to the pending request

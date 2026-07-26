@@ -8,6 +8,9 @@ PATHS = {
     ("repo",): ["clone"],
     ("repo", "clone"): [],
 }
+if os.environ.get("HIERARCHICAL_HELP_WIDE") == "1":
+    PATHS = {(): [f"command-{index}" for index in range(65)]}
+    PATHS.update({(name,): [] for name in PATHS[()]})
 
 
 def document(path):
@@ -23,6 +26,12 @@ def document(path):
 
 
 def programmatic_document(path):
+    if os.environ.get("HIERARCHICAL_HELP_INCOMPLETE_PROGRAMMATIC") == "1":
+        return document(path) + (
+            "\n## Programmatic use\n\n"
+            "Request JSON with `--format json` and retrieve sections without "
+            "a pager or full-screen interface.\n"
+        )
     return document(path) + (
         "\n## Programmatic use\n\n"
         "Request JSON with `--format json`, use `help outline`, then retrieve only "
@@ -35,6 +44,11 @@ def headings(programmatic):
     result = [
         {"level": 1, "title": "Fixture", "section": "fixture"},
         {"level": 2, "title": "Usage", "section": "usage"},
+        {
+            "level": 3,
+            "title": "Private repositories",
+            "section": "private-repositories",
+        },
         {"level": 2, "title": "Permissions", "section": "permissions"},
         {"level": 2, "title": "More usage", "section": "usage"},
     ]
@@ -150,10 +164,12 @@ def main():
         if not matches:
             print(f"error: invalid section {section}", file=sys.stderr)
             return 2
-        selected = list(matches)
-        if "--recursive" in rest:
-            for match_value in matches:
-                index = all_headings.index(match_value)
+        selected = []
+        for index, match_value in enumerate(all_headings):
+            if match_value["section"] != section:
+                continue
+            selected.append(match_value)
+            if "--recursive" in rest:
                 for descendant in all_headings[index + 1 :]:
                     if descendant["level"] <= match_value["level"]:
                         break
@@ -164,6 +180,7 @@ def main():
                 "content": {
                     "fixture": "Use this fixture to exercise hierarchical help.",
                     "usage": f"`{' '.join(('fixture',) + path)} help`",
+                    "private-repositories": "Use local credentials when needed.",
                     "permissions": "No side effects or permissions.",
                     "programmatic-use": "Use JSON, outline, section, and pipes without a pager.",
                 }[section],
@@ -193,19 +210,13 @@ def main():
                             "title": heading["title"],
                         }
                     )
+        if os.environ.get("HIERARCHICAL_HELP_EMPTY_SEARCH") == "1":
+            results = []
         if json_format:
             write_json(response(path, programmatic, results=results))
         else:
             for result in results:
                 print(" ".join(result["command_path"]), result["section"], result["title"])
-        return 0
-
-    if operation == "view":
-        if "--web" in rest:
-            slug = "/".join(path) if path else "index"
-            print(f"https://example.test/hierarchical-help-fixture/1.2.3/{slug}")
-        else:
-            print(programmatic_document(path) if programmatic else document(path), end="")
         return 0
 
     if json_format:

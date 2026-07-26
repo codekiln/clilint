@@ -313,30 +313,44 @@ bundle, Check, tested CLI tool, project directory, and protocol version. The
 CLI returns a versioned Check Outcome bound to that request. Clilint validates
 the outcome before adding it to the report.
 
+The check bundle declares the Checker CLI as a nonempty command argument
+array. Clilint replaces the literal `{bundle}` placeholder in any argument
+with the installed bundle directory, then starts the command directly without
+a shell. This supports a bundled native executable as well as an
+interpreter-backed CLI without making Clilint depend on a programming
+language. The Checker inherits Clilint's environment and operating-system
+permissions. An explicitly installed local bundle is trusted code; the first
+protocol does not add a sandbox.
+
 Setup state and intermediate evidence remain private to the checker. A later
 protocol can expose phases if a concrete check needs Clilint to retain or
 repeat one phase.
 
-Standard output contains only the versioned JSON outcome. Standard error
-contains Checker logs, not Check Messages. Logs remain
-separate because they describe checker execution and are most useful when the
-checker failed before producing a Check Result. Clilint never buffers either
-stream without a limit: it rejects protocol output over its configured
-maximum, retains only a bounded amount of standard error, and states when logs
-were truncated. Clilint applies a hard ceiling to configured limits, so a
-bundle cannot request unbounded retention. Memory use is therefore bounded for
-each running checker. Question 19 still needs to settle the exact defaults,
-ceilings, and other invocation rules.
+Clilint writes one JSON Check Request to the Checker's standard input and
+closes it. Standard output contains only one versioned JSON Check Outcome.
+Standard error contains Checker logs, not Check Messages. Logs remain separate
+because they describe checker execution and are most useful when the checker
+failed before producing a Check Result.
+
+Clilint owns the initial timeout and output limits. A bundle cannot raise them.
+Clilint reads both streams with fixed bounds, rejects protocol output over the
+standard-output limit, and returns a Check Error when standard error exceeds
+the retained-log limit. That Check Error retains the bounded logs and states
+that they were truncated. This keeps memory use bounded without adding
+per-bundle tuning before a concrete Checker needs it.
 
 A judgment-based Checker CLI may return Awaiting Assessment, expose a bundled
-Agent Skill and rubric to an external agent, and later validate the returned
-Assessment before producing a Check Result. Clilint still invokes the Checker
-CLI; it does not need an Agent Skill checker type. Question 20 still needs to
-settle the external-agent handoff.
+Agent Skill and rubric to an external agent, and later validate a returned
+Assessment before producing a Check Result. The first handoff is file-based:
+Clilint records the pending request, Skill, rubric, and evidence; an external
+agent writes an Assessment JSON file; and a later Clilint invocation supplies
+that Assessment to the same Checker CLI. Clilint does not invoke or prescribe
+an agent harness.
 
-The built-in core checks may continue to use checkers compiled into Clilint.
-Question 21 asks whether to retain those built-in checkers in this change or
-move them behind the same CLI boundary.
+The built-in core checks continue to use checkers compiled into Clilint in this
+change. They adopt the shared Check Outcome and Check Result model, but the new
+CLI boundary applies only to bundle-owned checks. A later change can migrate
+built-in checkers after the CLI protocol has been used by a complete bundle.
 
 The [Checker CLI contract comparison](experiments/checker-cli-contract-comparison/README.md)
 demonstrates mechanistic and judgment-based Checker CLIs running from a tested
@@ -568,10 +582,10 @@ requirement that answer 3 attached to the `Good` and `Excellent` ratings.
 
 ### 16 - How can a check bundle define setup, evidence gathering, and assessment for a new check without changing the Clilint binary?
 
-`codekiln` chose one bundle-owned checker for each complete check. An installed
-bundle may supply either an out-of-process command checker or an Agent Skill
-checker. The bundle can keep the checker, supporting scripts, metrics, rubrics,
-references, and other resources with the check definition.
+`codekiln` chose one bundle-owned Checker CLI for each complete Check. The
+bundle can keep the Checker, supporting scripts, metrics, rubrics, Agent
+Skills, references, and other resources with the Check definition. The
+Checker CLI may use those resources internally.
 
 Clilint supplies a versioned Check Request and requires a versioned Check
 Outcome in return. The checker owns an imperative lifecycle:
@@ -598,11 +612,11 @@ Score with several Check Messages. A later change can split it when a concrete
 need makes separate checks useful.
 
 A later change may expose setup, evidence gathering, or scoring as separate
-protocol phases when a concrete check needs Clilint to retain intermediate
-evidence, repeat a phase, or manage a phase independently. Adding a new check
-requires only bundle files when it can use a command or Agent Skill checker.
-The Clilint binary changes when a check needs a new checker implementation or a
-change to the shared protocol.
+protocol phases when a concrete Check needs Clilint to retain intermediate
+evidence, repeat a phase, or manage a phase independently. Adding a new Check
+requires only bundle files when its Checker CLI can work within the shared
+process and data protocol. The Clilint binary changes only when a Checker
+needs a new shared execution capability or a change to that protocol.
 
 The drafting agent had recommended separate host-managed phases. `codekiln`
 chose the whole-check model because it provides the required extension point
@@ -671,81 +685,56 @@ supports this decision with mechanistic and judgment-based prototypes. The
 judgment-based prototype also shows that an Agent Skill can sit behind the
 Checker CLI instead of becoming a separate Clilint checker implementation.
 
-## Open Questions
-
 ### 19 - What process contract should Clilint use when it invokes a Checker CLI?
 
-> Context from the drafting agent, for question 19.
->
-> Answer 23 settles the main shape: every bundle-owned Checker is a CLI, and
-> Clilint runs it from the directory in which the user invoked Clilint.
->
-> The remaining contract needs rules for how the bundle names the CLI, which
-> environment variables it inherits, standard input, standard output, Checker
-> logs, timeout, and output limits.
->
-> The Checker CLI experiment used a directly invoked argument list without a
-> shell, one JSON Check Request on standard input, one JSON Check Outcome on
-> standard output, and standard error for Checker logs. Each CLI found its own
-> package resources while running from the tested project.
->
-> Clilint would stream both output channels rather than buffer them without a
-> limit. It would retain only a bounded amount of standard error and state when
-> logs were truncated. This bounds memory for each running checker while
-> preserving the logs most useful for failures. A Clilint hard ceiling would
-> prevent a bundle from requesting unbounded retention. The exact defaults and
-> ceilings remain open.
->
-> The drafting agent recommends using the experiment's input and output shape,
-> inheriting Clilint's environment and operating-system permissions, and
-> treating an explicitly installed local bundle as trusted code. Clilint would
-> validate the CLI declaration and protocol documents but would not provide a
-> sandbox in this change.
+The drafting agent chose the smallest ordinary child-process contract that
+supports the settled design:
 
-<ANSWER_HERE>
+- the bundle declares one nonempty command argument array;
+- Clilint expands the literal `{bundle}` placeholder to the installed bundle
+  directory and starts the command without a shell;
+- the Checker inherits the directory, environment, and operating-system
+  permissions of the Clilint process;
+- Clilint sends one JSON Check Request on standard input;
+- the Checker returns one JSON Check Outcome on standard output;
+- standard error contains operational Checker logs; and
+- Clilint applies fixed timeout, protocol-output, and retained-log limits.
+
+An explicitly installed local bundle is trusted code. Clilint validates the
+declaration and protocol documents but does not add a sandbox. The first
+version does not let bundles raise the limits. That avoids unbounded memory and
+configuration before a concrete Checker demonstrates a need for tuning.
 
 ### 20 - How should a judgment-based Checker CLI hand off an Assessment to an external agent?
 
-> Context from the drafting agent, for question 20.
->
-> Answer 23 removes Agent Skill as a separate Clilint checker implementation.
-> A judgment-based Checker remains a CLI. It may use a bundled Agent Skill and
-> rubric internally, but the first protocol needs to define how an external
-> agent receives the work and returns an Assessment.
->
-> The Checker CLI experiment demonstrates this two-pass shape:
->
-> 1. Clilint invokes the Checker CLI.
-> 2. The CLI gathers evidence and returns Awaiting Assessment with its Skill,
->    rubric, and evidence.
-> 3. An external agent follows the Skill and writes the
->    judgment-based Assessment.
-> 4. The Checker CLI validates the Assessment and returns a Check Result.
->
-> The experiment uses a recorded Assessment file. The open part is whether the
-> production handoff remains a file exchange, adds a Checker CLI command, or
-> integrates with an external agent harness. Clilint should not choose a model
-> or agent harness.
+The drafting agent chose a file exchange for the first protocol:
 
-<ANSWER_HERE>
+1. Clilint invokes the Checker CLI.
+2. The Checker gathers evidence and returns Awaiting Assessment with the
+   request binding, Skill, rubric, and evidence.
+3. Clilint records that pending work in its report.
+4. An external agent follows the Skill and writes one Assessment JSON file.
+5. A later Clilint invocation supplies the Assessment to the same Checker CLI.
+6. The Checker validates the Assessment and returns a Check Result.
+
+This keeps the protocol model- and harness-independent and preserves the
+existing two-pass user workflow. Clilint does not start an agent. “File” is
+only the first transport for Assessment; it is not part of the Assessment
+domain name.
 
 ### 21 - Should the built-in `clilint` checks use the new Checker CLI protocol in this change?
 
-> Context from the drafting agent, for question 21.
->
-> The current built-in checks use typed Rust checker variants. Migrating all of
-> them would increase the replacement work but would give built-in and
-> installed checks one execution path. Keeping the built-in variants would
-> make the installed `codekiln-help` bundle the first proof that a bundle can
-> add behavior without changing the binary.
->
-> The drafting agent recommends keeping the current built-in checker variants
-> for this change. Their outcomes would use the new Check Result and Check
-> Message model. Installed bundles would use Checker CLIs. A later
-> change could migrate the built-in checkers after the extension protocol has
-> been exercised by concrete bundles.
+No. The drafting agent chose to keep the built-in checker variants in Rust for
+this change. They adopt the shared Check Outcome, Check Result, Score, and
+Check Message model. Bundle-owned checks use Checker CLIs.
 
-<ANSWER_HERE>
+This makes `codekiln-help` the proof that a bundle can add behavior without a
+Clilint binary change. A later change can move built-in checks behind the CLI
+boundary after the protocol has been exercised by a concrete bundle.
+
+## Open Questions
+
+None.
 
 ## Citations
 

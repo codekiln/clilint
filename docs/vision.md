@@ -1,29 +1,49 @@
 # Project direction
 
-Clilint is a behavioral test harness for command-line tools. It runs a tested CLI tool in defined ways, captures what happens, and evaluates checks. A check is one testable expectation. A check bundle is a reusable group of related checks.
+Clilint helps people state what a command-line tool should do and gives coding
+agents useful feedback while they build it.
 
-Most checks use deterministic checkers. They compute a result from captured evidence without asking an AI to make a judgment. For example, a checker can require `--help` to finish, exit successfully, and write help to stdout.
+A Check states one expectation about a project. A Checker gathers evidence
+and returns a Score with messages explaining what could improve. A check
+bundle groups related Checks so projects can reuse them.
 
-Other checks require judgment. An AI agent can apply a written rubric to evidence captured by Clilint. Reports keep deterministic and AI-assessed results separate and mark a judgment-based check `unassessed` until a matching assessment is attached.
+Built-in Rust checkers cover common mechanical behavior. Bundle-owned Checkers
+are CLIs. They can use scripts, other tools, AI agents, or any programming
+language while Clilint keeps one request and outcome format.
 
-This scope is broader than static analysis or conventional linting. Clilint executes the tested CLI tool, observes its behavior, applies deterministic checkers, and can ask for judgments that mechanical code should not pretend to make.
+## Core and optional standards
 
-## Core checks and additional opinions
+The built-in `clilint` bundle is intended to grow into an opinionated superset
+of the [Command Line Interface Guidelines](https://clig.dev/). Clilint should
+automate the guidelines it can evaluate reliably.
 
-The built-in `clilint` check bundle is intended to grow into an opinionated superset of the [Command Line Interface Guidelines](https://clig.dev/). Clilint should automate as many of those guidelines as it can evaluate responsibly.
+Optional bundles add focused standards. A project installs the bundles it
+wants, and an extension can add stricter local expectations. The
+[`codekiln-help` bundle](codekiln-help.md) checks navigable offline help and
+serves as an example for bundle authors.
 
-Optional bundles add standards that do not belong in the core. A project installs the bundles it wants, and an extension can add stricter local preferences without removing or weakening inherited checks. The [`codekiln-help` bundle](codekiln-help.md) is both an opinionated help standard and an example that other bundle authors can copy.
+## Mechanistic and judgment-based Checks
 
-## Help that people and agents can explore
+A Check is mechanistic when its Score and Check Messages require no human or
+model interpretation. Exit codes, output fields, and response times are common
+mechanistic evidence.
 
-Agents are another accessibility case for command-line documentation. Default help should be useful to everyone. An optional programmatic route can add the equivalent of a ramp: instructions for piping, machine-readable output, retrieving one section, and avoiding pagers or full-screen interfaces.
+A Check is judgment-based when human or model interpretation affects its Score
+or messages. The Checker can still run scripts and other tools while gathering
+evidence. An external agent applies a rubric and returns an Assessment, which
+the Checker validates before producing the shared Check Result.
 
-`codekiln-help` checks that every command path exposes shared documentation, local discovery, outlines, sections, search, and safe non-interactive viewing. People and agents can browse the complete documentation offline without adding a website to the permission boundary.
+The report identifies the method used for each result. Scores express the
+extent to which an expectation is met; Check Messages provide the specific
+feedback needed to improve it.
 
 ## Reusable expectations
 
-Check bundles make preferences portable between projects. A bundle can become part of a request to build a command-line tool: given these checks, create a tool for a particular job and show how it performs.
+Check bundles make project preferences reusable. A person can give a coding
+agent a bundle, ask it to build a CLI, and use the resulting Scores and
+messages to guide improvement.
 
-A future bundle-authoring workflow could learn from command-line tools that already provide a good experience. A person could point an AI at one tool or a related family, review the proposed expectations, reject accidental quirks, and keep the chosen preferences as checks.
-
-That model requires clear check-bundle composition, stable check identities, inspectable evidence, and honest separation between deterministic results and AI judgments. [Design explorations](design-explorations.md) record candidate approaches that are not yet requirements.
+A future bundle-authoring workflow could study an existing CLI, propose
+candidate expectations, and let a person keep the preferences that matter.
+[Design explorations](design-explorations.md) records ideas that have not
+become product requirements.

@@ -1,35 +1,72 @@
-# AI assessments
+# Judgment-based Assessments
 
-Most Clilint checks use repeatable checkers for exit codes, output text, and response time. A check can instead request an AI agent when the question requires judgment.
+A judgment-based Check uses human or model interpretation to determine its
+Score or Check Messages. The Checker still owns evidence gathering and result
+validation.
 
-Clilint keeps these results separate. A requested AI assessment appears as `unassessed` until the matching skill reviews the captured evidence and produces an assessment document.
+## Complete an Assessment
 
-## Install the help assessment skill
-
-From a Clilint repository checkout, list the available skills:
-
-```sh
-skills add . --list
-```
-
-Install `assess-cli-help` for your agent. For example, for Codex:
+First, save a JSON report:
 
 ```sh
-skills add . --skill assess-cli-help --agent codex -y --copy
+clilint check my-cli --format json > clilint-report.json
 ```
 
-The skill runs Clilint, reviews only the captured `--help` output, writes an assessment document, and asks Clilint to validate and attach it. The skill does not run examples found in the target's help text.
+An unfinished judgment-based Check has `"outcome": "awaiting-assessment"`.
+Its `assessment_request` contains the request identifier, evidence digest,
+Skill, rubric, and evidence needed by an external agent.
 
-## Attach an existing assessment
+The agent writes one Assessment JSON file:
 
-Pass one or more TOML or JSON assessment documents with `--assessment`:
+```json
+{
+  "format_version": 1,
+  "request_id": "sha256:...",
+  "check": "clilint/help/useful-example",
+  "evidence_digest": "sha256:...",
+  "skill": {
+    "name": "assess-cli-help",
+    "version": "1.0.0"
+  },
+  "score": 3.5,
+  "messages": [
+    {
+      "level": "warning",
+      "message": "Explain what the example command changes.",
+      "evidence": {"example": "contacts add Ada"}
+    }
+  ],
+  "explanation": "The example is usable, but its result is unclear.",
+  "assessor": "optional agent or model name"
+}
+```
+
+Supply the file on a later run:
 
 ```sh
 clilint check my-cli \
-  --assessment ./clilint-help-assessment.toml \
+  --assessment ./clilint-help-assessment.json \
   --format json
 ```
 
-Clilint checks the document format, check identifier, result, skill name and version, and evidence digest. The digest binds the assessment to the captured evidence. If the tested CLI tool's evidence changes, Clilint rejects the older assessment instead of attaching it to the new report.
+Clilint or the bundle-owned Checker validates the request identifier, Check,
+Skill, evidence digest, Score, and Check Messages. A change to the captured
+evidence makes the older Assessment invalid.
 
-The skill source is [`skills/assess-cli-help/SKILL.md`](../skills/assess-cli-help/SKILL.md). A working assessment fixture is available at [`tests/fixtures/useful-help-assessment.toml`](../tests/fixtures/useful-help-assessment.toml).
+Clilint does not choose or start an AI model. Any agent harness that can read
+the request and write the JSON Assessment can complete the Check.
+
+## Install the help-assessment Skill
+
+From a Clilint repository checkout:
+
+```sh
+skills add . --list
+skills add . --skill assess-cli-help --agent codex -y --copy
+```
+
+The Skill reads only the evidence captured by Clilint. It does not execute
+example commands found in help text.
+
+See the [Skill source](../skills/assess-cli-help/SKILL.md) and the
+[working Assessment fixture](../tests/fixtures/useful-help-assessment.json).

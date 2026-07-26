@@ -1,5 +1,13 @@
 # Q16 follow-up task review
 
+## Implementation status
+
+The replacement described by this review has now been applied. The sections
+under “Stale implementation” record the state found before the replacement;
+they are retained to explain why the replacement tasks exist. The current
+implementation uses the shared Check Outcome model, one Checker CLI for the
+`codekiln-help` Check, local bundle paths, and no viewer behavior.
+
 ## Main conclusion
 
 The proposal, design, delta specifications, and task list now describe the
@@ -7,8 +15,8 @@ replacement required by answer 16. Questions 18 through 21 in `design.md`
 originally recorded the remaining project-owner decisions. Questions 18 and 22
 now settle the shared result terms and score. Answer 23 requires one Checker
 CLI per bundle-owned Check and keeps the project as its working directory.
-Questions 19 through 21 remain open. Application work begins after those
-answers are reflected in the artifacts.
+Questions 19 through 21 are settled. Application work can proceed without
+further project-owner decisions.
 
 The replacement should preserve useful behavior through black-box tests. Once
 the bundle-owned check passes those tests, remove the fixed hierarchical-help
@@ -34,7 +42,7 @@ Six decisions govern the remaining work:
 Question 16 also leaves room for one check to gather evidence once, verify
 several related matters, and return one Score with several Check Messages.
 
-## Stale implementation
+## Stale implementation found by the review
 
 ### Check-bundle schema
 
@@ -157,22 +165,19 @@ A check is judgment-based when human or model interpretation affects its Score
 or Check Messages. Otherwise, it is mechanistic. A judgment-based check may
 still run scripts while gathering evidence.
 
-## Protocol choices that remain before implementation
-
-Questions 19 through 21 ask for the remaining choices about Checker CLI execution,
-the judgment-based handoff, and built-in checks.
+## Settled protocol choices
 
 ### Checker CLI invocation
 
-Define:
+The first Checker CLI contract uses:
 
 - Checker CLI manifest syntax;
 - CLI resolution against the bundle directory;
 - JSON input and output;
 - environment handling;
-- whole-check timeout and protocol-output limits;
+- fixed whole-check timeout and protocol-output limits owned by Clilint;
 - bounded retention and truncation reporting for standard-error checker logs;
-- hard ceilings that prevent a bundle from requesting unbounded retention;
+- no per-bundle process-limit configuration;
 - malformed output and nonzero-exit behavior;
 - Checker runtime dependency responsibility; and
 - the trust boundary created by executing an installed local bundle.
@@ -182,8 +187,7 @@ which the user invoked Clilint, normally the tested project directory.
 
 ### Judgment-based Checker CLI handoff
 
-Define a complete handoff. A small initial model could retain an external
-two-pass workflow:
+The first handoff retains the external two-pass workflow:
 
 ```text
 Clilint invokes the Checker CLI
@@ -198,15 +202,14 @@ an external agent writes an Assessment
 the Checker CLI validates the Assessment and returns a Check Result
 ```
 
-This model still needs request binding, Skill identity and location,
-Assessment and Check Result validation, and a concrete way for the Checker CLI
-to exchange work with the external agent.
+The Assessment travels in a JSON file supplied to a later Clilint invocation.
+The Checker CLI validates the request binding, Skill identity, Assessment, and
+Check Result. Clilint does not start or identify the external agent harness.
 
 ### Built-in checks
 
-Choose whether the built-in `clilint` checks keep their current invocation
-checker types or migrate to the Checker CLI protocol. Keeping the current
-invocation checks as built-in behavior would make `codekiln-help` the proof
+The built-in `clilint` checks keep their current Rust checker types in this
+change and adopt the shared Check Result model. `codekiln-help` is the proof
 that an installed bundle can add behavior without a binary change.
 
 ### `codekiln-help` check boundary
@@ -246,11 +249,11 @@ check if separate execution or reporting becomes useful.
 
 ## Recommended work order
 
-### 1. Finish the protocol decisions
+### 1. Apply the settled protocol decisions
 
 The proposal, design, delta specifications, and tasks now describe the
-whole-check Checker CLI model and stale-code replacement. `codekiln` still
-needs to answer questions 19 through 21 before application work begins.
+whole-check Checker CLI model and stale-code replacement. No further
+project-owner answer is required before application work begins.
 
 ### 2. Remove the independently stale scope
 

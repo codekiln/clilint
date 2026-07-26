@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "request_id": "sha256:3e939359d0ea403d1284ec92e0f6ff5eb00d58532f0ea7973b60a69d6e2eb739",
+  "check": "clilint/help/useful-example",
+  "evidence_digest": "sha256:d3fa71c8f0721feb1f839a23fc8a34507e3c264a22e26f1c325248275cb4b34b",
+  "skill": {
+    "name": "assess-cli-help",
+    "version": "1.0.0"
+  },
+  "score": 4.0,
+  "messages": [],
+  "explanation": "The examples teach both a likely write task and a machine-readable read task.",
+  "assessor": "fixture"
+}

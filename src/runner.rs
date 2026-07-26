@@ -8,6 +8,8 @@ use std::{
 
 use crate::model::{InvocationSpec, Observation};
 
+const DEFAULT_OUTPUT_LIMIT: usize = 1_048_576;
+
 pub struct Runner {
     target: String,
     default_timeout_ms: u64,
@@ -26,7 +28,7 @@ impl Runner {
     }
 
     pub fn run(&mut self, spec: &InvocationSpec) -> Result<Observation, String> {
-        self.run_with_output_limit(spec, None)
+        self.run_with_output_limit(spec, Some(DEFAULT_OUTPUT_LIMIT))
     }
 
     pub fn run_bounded(

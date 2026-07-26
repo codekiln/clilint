@@ -14,9 +14,15 @@ checks.
 - Give each bundle-owned Check one Checker CLI that owns setup, evidence
   gathering, and production of the Check Outcome without adding
   check-specific code to Clilint.
+- Invoke each Checker CLI as an ordinary child process from the project
+  directory, with a bounded JSON request and outcome exchange.
 - Define one Check Outcome, Check Result, Score, and Check Message format for
   mechanistic and judgment-based Checker CLIs. Reserve Assessment for
   judgment-based Checks.
+- Keep built-in checkers in Rust for this change while making their results use
+  the shared output model.
+- Use a file-based, two-pass Assessment handoff without choosing an AI model or
+  agent harness.
 - Build `codekiln-help` with the same bundle format, Checker CLI protocol, and
   inheritance available to other bundle authors.
 - Document `codekiln-help` as a worked example of creating, testing, installing,

@@ -24,13 +24,22 @@ The Rust rebuild retains the prototype's behavioral observations: arguments, exi
 | `CLI-AGENT-001` | `clilint/agent/structured-output` |
 | `CLI-AGENT-002` | `clilint/agent/non-interactive` |
 
-`CLI-HELP-004` previously passed whenever help contained the word `example`. Its replacement is an AI-agent check that distinguishes a useful task example from a heading or placeholder. The other mapped checks remain deterministic.
+`CLI-HELP-004` previously passed whenever help contained the word `example`.
+Its replacement is a judgment-based Check that distinguishes a useful task
+example from a heading or placeholder. The other mapped Checks are
+mechanistic.
 
 ## Public behavior changes
 
 - `clilint check` is the 0.0.2 workflow. The prototype's `score` and `explain` subcommands, profiles, plain output, output-file option, and minimum-score gate are absent.
-- Human and JSON reports separate deterministic measurements from AI-agent results. Only deterministic findings contribute to the score.
+- Human and JSON reports give every completed Check a Score from `0.0` through
+  `4.0` and focused Check Messages.
 - Check identifiers are scoped by check bundle. The core bundle is embedded in the binary, and local extensions can add checks or strengthen inherited severity.
-- JSON reports include captured evidence, evidence digests, required skill metadata, and `unassessed` as a distinct AI-agent result.
-- `--assessment` accepts repeatable TOML or JSON documents. Clilint validates the check, result, skill identity, format version, and stable evidence digest before attachment.
-- Python probe loading and executable extension code are absent. Checkers use a closed set of Rust types.
+- JSON reports represent Check Result, Check Error, Awaiting Assessment, and
+  Skipped as distinct outcomes.
+- `--assessment` accepts repeatable JSON Assessment files. Clilint validates
+  the Check, request, Skill, Score, messages, format version, and evidence
+  digest.
+- Built-in Checkers use Rust types. Each bundle-owned Check declares a Checker
+  CLI, which can use any programming language or tools behind the shared JSON
+  exchange.

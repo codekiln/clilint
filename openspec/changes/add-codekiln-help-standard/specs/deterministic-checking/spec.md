@@ -26,6 +26,10 @@ inputs and possible results are validated before the tested CLI tool runs.
 Each installed mechanistic check SHALL use a bundle-owned Checker CLI that
 returns the shared Check Outcome structure.
 
+Built-in checkers SHALL remain compiled into Clilint in this change and SHALL
+return the same Check Result, Score, and Check Message structure used by
+bundle-owned Checker CLIs.
+
 #### Scenario: Valid output assertion
 - **WHEN** a check bundle declares a supported assertion about captured output
 - **THEN** Clilint runs the checker and returns a Score and Check Messages with supporting evidence

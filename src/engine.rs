@@ -1,51 +1,85 @@
+use std::{
+    collections::{HashMap, HashSet},
+    io::{Read, Write},
+    path::Path,
+    process::{Command, Stdio},
+    thread,
+    time::{Duration, Instant},
+};
+
 use sha2::{Digest, Sha256};
 
 use crate::{
-    VERSION,
+    VERSION, assessment,
     check_bundle::{
         Assertion, CheckBundleManifest, CheckDefinition, CheckerDefinition, InvocationCheck,
     },
-    help_checker::HelpContext,
-    model::{EvaluationMethod, Finding, Report, ResultStatus},
+    model::{
+        Assessment, AssessmentRequest, CheckBundleIdentity, CheckError, CheckMessage, CheckOutcome,
+        CheckRecord, CheckRequest, CheckResult, CheckerResponse, EvaluationMethod, Report, Score,
+    },
     runner::Runner,
 };
 
+const CHECKER_TIMEOUT_MS: u64 = 60_000;
+const CHECKER_STDOUT_LIMIT: usize = 1_048_576;
+const CHECKER_LOG_LIMIT: usize = 65_536;
+
 pub fn check(
     target: &str,
+    project_directory: &Path,
     bundle: &CheckBundleManifest,
     runner: &mut Runner,
+    assessments: &[Assessment],
 ) -> Result<Report, String> {
-    let mut findings = Vec::with_capacity(bundle.checks.len());
-    let help_limits = bundle.checks.iter().find_map(|check| {
-        if let Some(CheckerDefinition::HierarchicalHelp { limits, .. }) = &check.checker {
-            Some(limits)
-        } else {
-            None
+    let mut supplied = HashMap::new();
+    for assessment in assessments {
+        if supplied
+            .insert(assessment.check.clone(), assessment)
+            .is_some()
+        {
+            return Err(format!(
+                "more than one Assessment was supplied for Check {}",
+                assessment.check
+            ));
         }
-    });
-    if let Some(expected) = help_limits
-        && bundle.checks.iter().any(|check| {
-            matches!(
-                &check.checker,
-                Some(CheckerDefinition::HierarchicalHelp { limits, .. }) if limits != expected
-            )
-        })
-    {
-        return Err(
-            "all hierarchical-help checkers in one run must use the same limits".to_owned(),
-        );
     }
-    let help_context = help_limits.map(|limits| HelpContext::collect(runner, limits));
+
+    let mut used_assessments = HashSet::new();
+    let mut checks = Vec::with_capacity(bundle.checks.len());
     for check in &bundle.checks {
-        findings.push(match check.evaluation_method {
-            EvaluationMethod::Deterministic => deterministic(check, runner, help_context.as_ref())?,
-            EvaluationMethod::AiAgent => agent(check, runner)?,
+        let owner = owner_identity(bundle, &check.id)?;
+        let supplied_assessment = supplied.get(&check.id).copied();
+        if supplied_assessment.is_some() {
+            used_assessments.insert(check.id.clone());
+        }
+        checks.push(match &check.checker {
+            Some(CheckerDefinition::Cli { command }) => run_checker_cli(
+                target,
+                project_directory,
+                owner,
+                check,
+                command,
+                supplied_assessment,
+            )?,
+            _ => match check.evaluation_method {
+                EvaluationMethod::Mechanistic => built_in_mechanistic(check, runner)?,
+                EvaluationMethod::JudgmentBased => {
+                    built_in_judgment(check, runner, supplied_assessment)?
+                }
+            },
         });
     }
-    findings.sort_by(|left, right| left.check.cmp(&right.check));
+    if let Some(unknown) = supplied
+        .keys()
+        .find(|check| !used_assessments.contains(*check))
+    {
+        return Err(format!("Assessment references unknown Check {unknown}"));
+    }
+    checks.sort_by(|left, right| left.check.cmp(&right.check));
 
     let mut report = Report {
-        format_version: 2,
+        format_version: 3,
         tool_version: VERSION.into(),
         check_bundles: if bundle.resolved_check_bundles.is_empty() {
             vec![bundle.check_bundle.clone()]
@@ -53,23 +87,39 @@ pub fn check(
             bundle.resolved_check_bundles.clone()
         },
         target: target.into(),
-        deterministic: Default::default(),
-        ai_agent: Default::default(),
-        findings,
+        checks,
+        summary: Default::default(),
     };
     report.recalculate();
     Ok(report)
 }
 
-fn deterministic(
+fn owner_identity<'a>(
+    bundle: &'a CheckBundleManifest,
+    check: &str,
+) -> Result<&'a CheckBundleIdentity, String> {
+    let name = check
+        .split_once('/')
+        .map(|(name, _)| name)
+        .ok_or_else(|| format!("Check {check} has no bundle prefix"))?;
+    if bundle.check_bundle.name == name {
+        return Ok(&bundle.check_bundle);
+    }
+    bundle
+        .resolved_check_bundles
+        .iter()
+        .find(|identity| identity.name == name)
+        .ok_or_else(|| format!("Check {check} belongs to unknown check bundle {name}"))
+}
+
+fn built_in_mechanistic(
     check: &CheckDefinition,
     runner: &mut Runner,
-    help_context: Option<&HelpContext>,
-) -> Result<Finding, String> {
+) -> Result<CheckRecord, String> {
     let checker = check
         .checker
         .as_ref()
-        .ok_or_else(|| format!("deterministic check {} has no checker", check.id))?;
+        .ok_or_else(|| format!("mechanistic Check {} has no checker", check.id))?;
     let (passed, evidence, failures) = match checker {
         CheckerDefinition::Invocation { invocation } => {
             let (observation, failures) = evaluate(invocation, runner)?;
@@ -85,9 +135,7 @@ fn deterministic(
             let mut passed = false;
             for invocation in invocations {
                 let (observation, failures) = evaluate(invocation, runner)?;
-                if failures.is_empty() {
-                    passed = true;
-                }
+                passed |= failures.is_empty();
                 observations.push(observation);
                 all_failures.extend(failures);
             }
@@ -111,70 +159,366 @@ fn deterministic(
                 failures,
             )
         }
-        CheckerDefinition::HierarchicalHelp { behavior, .. } => {
-            let context = help_context.ok_or_else(|| {
-                format!(
-                    "hierarchical help context was not collected for {}",
-                    check.id
-                )
-            })?;
-            let (passed, detail, evidence) = context.result(*behavior);
-            let result = if passed {
-                ResultStatus::Pass
-            } else {
-                check.severity.failed_result()
-            };
-            return Ok(finding(check, result, detail, evidence, None));
+        CheckerDefinition::Cli { .. } => {
+            return Err(format!(
+                "Checker CLI {} was sent to the built-in checker path",
+                check.id
+            ));
         }
     };
     let result = if passed {
-        ResultStatus::Pass
+        CheckResult {
+            score: Score::new(4.0).expect("valid perfect Score"),
+            messages: Vec::new(),
+            assessment: None,
+        }
     } else {
-        check.severity.failed_result()
+        CheckResult {
+            score: check.severity.failed_score(),
+            messages: vec![CheckMessage {
+                level: check.severity.message_level(),
+                message: failures.join("; "),
+                evidence,
+            }],
+            assessment: None,
+        }
     };
-    let detail = if passed {
-        "declared behavioral check passed".into()
-    } else {
-        failures.join("; ")
-    };
-    Ok(finding(check, result, detail, evidence, None))
-}
-
-fn agent(check: &CheckDefinition, runner: &mut Runner) -> Result<Finding, String> {
-    let evidence_spec = check
-        .evidence
-        .as_ref()
-        .ok_or_else(|| format!("AI-agent check {} has no evidence invocation", check.id))?;
-    let observation = runner.run(evidence_spec)?;
-    let evidence = serde_json::json!({"observations": [observation]});
-    Ok(finding(
-        check,
-        ResultStatus::Unassessed,
-        "run the required skill to assess the captured evidence".into(),
-        evidence,
-        check.skill.clone(),
-    ))
-}
-
-fn finding(
-    check: &CheckDefinition,
-    result: ResultStatus,
-    detail: String,
-    evidence: serde_json::Value,
-    required_skill: Option<crate::model::SkillRef>,
-) -> Finding {
-    Finding {
+    result.validate()?;
+    Ok(CheckRecord {
         check: check.id.clone(),
         title: check.title.clone(),
-        severity: check.severity,
-        evaluation_method: check.evaluation_method,
-        result,
-        required_for_ratings: check.required_for_ratings.clone(),
-        detail,
-        evidence_digest: evidence_digest(&evidence),
-        evidence,
-        required_skill,
-        assessment: None,
+        method: EvaluationMethod::Mechanistic,
+        outcome: CheckOutcome::Result { result },
+    })
+}
+
+fn built_in_judgment(
+    check: &CheckDefinition,
+    runner: &mut Runner,
+    supplied_assessment: Option<&Assessment>,
+) -> Result<CheckRecord, String> {
+    let evidence_spec = check.evidence.as_ref().ok_or_else(|| {
+        format!(
+            "judgment-based Check {} has no evidence invocation",
+            check.id
+        )
+    })?;
+    let skill = check
+        .skill
+        .as_ref()
+        .ok_or_else(|| format!("judgment-based Check {} has no Skill", check.id))?;
+    let observation = runner.run(evidence_spec)?;
+    let evidence = serde_json::json!({"observations": [observation]});
+    let evidence_digest = evidence_digest(&evidence);
+    let request_id = digest_value(&serde_json::json!({
+        "check": check.id,
+        "evidence_digest": evidence_digest,
+    }));
+    let outcome = if let Some(document) = supplied_assessment {
+        CheckOutcome::Result {
+            result: assessment::validate(
+                document,
+                &request_id,
+                &check.id,
+                skill,
+                &evidence_digest,
+            )?,
+        }
+    } else {
+        CheckOutcome::AwaitingAssessment {
+            assessment_request: AssessmentRequest {
+                request_id,
+                evidence_digest,
+                skill: skill.clone(),
+                rubric: "Apply the bundled Skill to the captured help evidence.".into(),
+                evidence,
+            },
+        }
+    };
+    Ok(CheckRecord {
+        check: check.id.clone(),
+        title: check.title.clone(),
+        method: EvaluationMethod::JudgmentBased,
+        outcome,
+    })
+}
+
+fn run_checker_cli(
+    target: &str,
+    project_directory: &Path,
+    owner: &CheckBundleIdentity,
+    check: &CheckDefinition,
+    command: &[String],
+    supplied_assessment: Option<&Assessment>,
+) -> Result<CheckRecord, String> {
+    let bundle_root = check
+        .bundle_root
+        .as_ref()
+        .ok_or_else(|| format!("Checker CLI {} has no bundle directory", check.id))?;
+    let command = command
+        .iter()
+        .map(|part| part.replace("{bundle}", &bundle_root.to_string_lossy()))
+        .collect::<Vec<_>>();
+    let request_id = digest_value(&serde_json::json!({
+        "format_version": 1,
+        "check_bundle": owner,
+        "check": check.id,
+        "target": target,
+        "project_directory": project_directory,
+    }));
+    let request = CheckRequest {
+        format_version: 1,
+        request_id: request_id.clone(),
+        check_bundle: owner.clone(),
+        check: check.id.clone(),
+        target: vec![target.into()],
+        project_directory: project_directory.to_string_lossy().into_owned(),
+        assessment: supplied_assessment.cloned(),
+    };
+    let request_json = serde_json::to_vec(&request).map_err(|error| error.to_string())?;
+    let process = run_process(&command, project_directory, &request_json);
+    let outcome = match process {
+        Ok(process) => {
+            if let Some(message) = process_failure_message(&process) {
+                CheckOutcome::Error {
+                    error: process_error(&message, process),
+                }
+            } else {
+                match parse_checker_response(&process.stdout) {
+                    Ok(response) => match validate_response(response, &request_id, check) {
+                        Ok(outcome) => outcome,
+                        Err(message) => CheckOutcome::Error {
+                            error: process_error(&message, process),
+                        },
+                    },
+                    Err(error) => CheckOutcome::Error {
+                        error: process_error(&error, process),
+                    },
+                }
+            }
+        }
+        Err(message) => CheckOutcome::Error {
+            error: CheckError {
+                message,
+                checker_logs: String::new(),
+                logs_truncated: false,
+            },
+        },
+    };
+    Ok(CheckRecord {
+        check: check.id.clone(),
+        title: check.title.clone(),
+        method: check.evaluation_method,
+        outcome,
+    })
+}
+
+fn process_failure_message(process: &ProcessOutput) -> Option<String> {
+    if process.timed_out {
+        Some("Checker CLI timed out".into())
+    } else if process.stdout_exceeded {
+        Some("Checker CLI exceeded the protocol output limit".into())
+    } else if process.stderr_exceeded {
+        Some("Checker CLI exceeded the retained-log limit".into())
+    } else if process.exit_status != Some(0) {
+        Some(format!(
+            "Checker CLI exited with status {}",
+            process
+                .exit_status
+                .map_or_else(|| "unknown".into(), |status| status.to_string())
+        ))
+    } else {
+        None
+    }
+}
+
+fn parse_checker_response(bytes: &[u8]) -> Result<CheckerResponse, String> {
+    let value: serde_json::Value = serde_json::from_slice(bytes)
+        .map_err(|error| format!("Checker CLI returned invalid JSON: {error}"))?;
+    let object = value
+        .as_object()
+        .ok_or_else(|| "Checker CLI response must be one JSON object".to_owned())?;
+    let outcome = object
+        .get("outcome")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "Checker CLI response must name one outcome".to_owned())?;
+    let payload = match outcome {
+        "result" => "result",
+        "error" => "error",
+        "awaiting-assessment" => "assessment_request",
+        "skipped" => "reason",
+        _ => {
+            return Err(format!(
+                "Checker CLI response uses unknown outcome {outcome:?}"
+            ));
+        }
+    };
+    let allowed = [
+        "format_version",
+        "request_id",
+        "check",
+        "method",
+        "outcome",
+        payload,
+    ];
+    if let Some(field) = object
+        .keys()
+        .find(|field| !allowed.contains(&field.as_str()))
+    {
+        return Err(format!(
+            "Checker CLI response contains unknown field {field:?}"
+        ));
+    }
+    serde_json::from_value(value)
+        .map_err(|error| format!("Checker CLI returned an invalid Check Outcome: {error}"))
+}
+
+fn validate_response(
+    response: CheckerResponse,
+    request_id: &str,
+    check: &CheckDefinition,
+) -> Result<CheckOutcome, String> {
+    if response.format_version != 1 {
+        return Err(format!(
+            "Checker CLI returned unsupported format version {}",
+            response.format_version
+        ));
+    }
+    if response.request_id != request_id {
+        return Err(format!(
+            "Checker CLI response belongs to request {}, expected {request_id}",
+            response.request_id
+        ));
+    }
+    if response.check != check.id {
+        return Err(format!(
+            "Checker CLI response names Check {}, expected {}",
+            response.check, check.id
+        ));
+    }
+    if response.method != check.evaluation_method {
+        return Err(format!(
+            "Checker CLI response uses method {:?}, expected {:?}",
+            response.method, check.evaluation_method
+        ));
+    }
+    if let CheckOutcome::Result { result } = &response.outcome {
+        result.validate()?;
+    }
+    if let CheckOutcome::AwaitingAssessment { assessment_request } = &response.outcome {
+        if check.evaluation_method != EvaluationMethod::JudgmentBased {
+            return Err("a mechanistic Checker CLI cannot return Awaiting Assessment".into());
+        }
+        if assessment_request.request_id != request_id {
+            return Err("Awaiting Assessment uses the wrong request binding".into());
+        }
+    }
+    Ok(response.outcome)
+}
+
+struct ProcessOutput {
+    exit_status: Option<i32>,
+    timed_out: bool,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+    stdout_exceeded: bool,
+    stderr_exceeded: bool,
+}
+
+fn run_process(
+    command: &[String],
+    project_directory: &Path,
+    input: &[u8],
+) -> Result<ProcessOutput, String> {
+    let (program, arguments) = command
+        .split_first()
+        .ok_or_else(|| "Checker CLI command is empty".to_owned())?;
+    let mut child = Command::new(program)
+        .args(arguments)
+        .current_dir(project_directory)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| format!("could not start Checker CLI {program}: {error}"))?;
+    child
+        .stdin
+        .take()
+        .ok_or_else(|| "Checker CLI standard input was unavailable".to_owned())?
+        .write_all(input)
+        .map_err(|error| format!("could not write Checker CLI request: {error}"))?;
+
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "Checker CLI standard output was unavailable".to_owned())?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| "Checker CLI standard error was unavailable".to_owned())?;
+    let stdout_reader = thread::spawn(move || read_bounded(stdout, CHECKER_STDOUT_LIMIT));
+    let stderr_reader = thread::spawn(move || read_bounded(stderr, CHECKER_LOG_LIMIT));
+    let deadline = Instant::now() + Duration::from_millis(CHECKER_TIMEOUT_MS);
+    let (status, timed_out) = loop {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| format!("could not wait for Checker CLI: {error}"))?
+        {
+            break (Some(status), false);
+        }
+        if Instant::now() >= deadline {
+            child
+                .kill()
+                .map_err(|error| format!("could not stop timed-out Checker CLI: {error}"))?;
+            let status = child
+                .wait()
+                .map_err(|error| format!("could not reap timed-out Checker CLI: {error}"))?;
+            break (Some(status), true);
+        }
+        thread::sleep(Duration::from_millis(5));
+    };
+    let (stdout, stdout_exceeded) = join_reader(stdout_reader, "standard output")?;
+    let (stderr, stderr_exceeded) = join_reader(stderr_reader, "standard error")?;
+    Ok(ProcessOutput {
+        exit_status: if timed_out {
+            None
+        } else {
+            status.and_then(|status| status.code())
+        },
+        timed_out,
+        stdout,
+        stderr,
+        stdout_exceeded,
+        stderr_exceeded,
+    })
+}
+
+fn read_bounded(mut reader: impl Read, limit: usize) -> std::io::Result<(Vec<u8>, bool)> {
+    let mut output = Vec::new();
+    reader
+        .by_ref()
+        .take(limit.saturating_add(1) as u64)
+        .read_to_end(&mut output)?;
+    let exceeded = output.len() > limit;
+    output.truncate(limit);
+    Ok((output, exceeded))
+}
+
+fn join_reader(
+    reader: thread::JoinHandle<std::io::Result<(Vec<u8>, bool)>>,
+    stream: &str,
+) -> Result<(Vec<u8>, bool), String> {
+    reader
+        .join()
+        .map_err(|_| format!("Checker CLI {stream} reader panicked"))?
+        .map_err(|error| format!("could not read Checker CLI {stream}: {error}"))
+}
+
+fn process_error(message: &str, process: ProcessOutput) -> CheckError {
+    CheckError {
+        message: message.into(),
+        checker_logs: String::from_utf8_lossy(&process.stderr).into_owned(),
+        logs_truncated: process.stderr_exceeded,
     }
 }
 
@@ -221,7 +565,7 @@ fn assertion_failure(
     };
     failed.then(|| {
         format!(
-            "assertion {assertion:?} failed for args {:?}",
+            "assertion {assertion:?} failed for arguments {:?}",
             observation.args
         )
     })
@@ -240,7 +584,11 @@ fn contains_version_number(text: &str) -> bool {
 pub fn evidence_digest(evidence: &serde_json::Value) -> String {
     let mut stable_evidence = evidence.clone();
     remove_unstable_measurements(&mut stable_evidence);
-    let encoded = serde_json::to_vec(&stable_evidence).expect("JSON values always serialize");
+    digest_value(&stable_evidence)
+}
+
+fn digest_value(value: &serde_json::Value) -> String {
+    let encoded = serde_json::to_vec(value).expect("JSON values always serialize");
     let digest = Sha256::digest(encoded);
     format!("sha256:{digest:x}")
 }
@@ -279,5 +627,56 @@ mod tests {
         assert_eq!(evidence_digest(&first), evidence_digest(&second));
         let changed = serde_json::json!({"stdout": "changed", "duration_ms": 1.0});
         assert_ne!(evidence_digest(&first), evidence_digest(&changed));
+    }
+
+    #[test]
+    fn checker_response_rejects_unknown_fields() {
+        let response = serde_json::json!({
+            "format_version": 1,
+            "request_id": "request-1",
+            "check": "bundle/check",
+            "method": "mechanistic",
+            "outcome": "skipped",
+            "reason": "not applicable",
+            "unexpected": true
+        });
+        assert!(
+            parse_checker_response(&serde_json::to_vec(&response).unwrap())
+                .unwrap_err()
+                .contains("unknown field")
+        );
+    }
+
+    #[test]
+    fn checker_process_failures_are_distinct_and_keep_truncated_logs() {
+        let output = |exit_status, timed_out, stdout_exceeded, stderr_exceeded| ProcessOutput {
+            exit_status,
+            timed_out,
+            stdout: Vec::new(),
+            stderr: b"checker log".to_vec(),
+            stdout_exceeded,
+            stderr_exceeded,
+        };
+        assert_eq!(
+            process_failure_message(&output(None, true, false, false)).unwrap(),
+            "Checker CLI timed out"
+        );
+        assert!(
+            process_failure_message(&output(Some(0), false, true, false))
+                .unwrap()
+                .contains("protocol output")
+        );
+        let logs = output(Some(0), false, false, true);
+        assert!(
+            process_failure_message(&logs)
+                .unwrap()
+                .contains("retained-log")
+        );
+        assert!(process_error("error", logs).logs_truncated);
+        assert!(
+            process_failure_message(&output(Some(7), false, false, false))
+                .unwrap()
+                .contains("status 7")
+        );
     }
 }

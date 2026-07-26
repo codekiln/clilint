@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs, path::Path};
+use std::{collections::HashSet, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -46,6 +46,8 @@ pub struct CheckDefinition {
     pub skill: Option<SkillRef>,
     #[serde(default)]
     pub evidence: Option<InvocationSpec>,
+    #[serde(skip)]
+    pub bundle_root: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -61,50 +63,9 @@ pub enum CheckerDefinition {
     AllInvocations {
         invocations: Vec<InvocationCheck>,
     },
-    HierarchicalHelp {
-        behavior: HierarchicalHelpBehavior,
-        #[serde(default, flatten)]
-        limits: HelpLimits,
+    Cli {
+        command: Vec<String>,
     },
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum HierarchicalHelpBehavior {
-    Availability,
-    CommandDiscovery,
-    Outline,
-    SectionRetrieval,
-    SharedHelp,
-    ProgrammaticGuidance,
-    Search,
-    NonInteractiveOutput,
-    LocalView,
-    WebView,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct HelpLimits {
-    pub command_count: usize,
-    pub command_depth: usize,
-    pub document_bytes: usize,
-    pub search_results: usize,
-    pub total_commands: usize,
-    pub timeout_ms: u64,
-}
-
-impl Default for HelpLimits {
-    fn default() -> Self {
-        Self {
-            command_count: 64,
-            command_depth: 8,
-            document_bytes: 1_048_576,
-            search_results: 256,
-            total_commands: 1_024,
-            timeout_ms: 2_000,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -116,7 +77,7 @@ pub struct InvocationCheck {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(tag = "type", rename_all = "kebab-case")]
+#[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum Assertion {
     ExitCode { value: i32 },
     ExitNonZero,
@@ -131,22 +92,42 @@ pub enum Assertion {
     VersionNumber,
 }
 
-pub fn load_resolved(extension_path: Option<&Path>) -> Result<CheckBundleManifest, String> {
-    let mut core = parse(CORE_CHECK_BUNDLE, "built-in core check bundle")?;
-    validate(&core)?;
-    if let Some(path) = extension_path {
-        let text = fs::read_to_string(path)
-            .map_err(|error| format!("could not read check bundle {}: {error}", path.display()))?;
-        let extension = parse(&text, &path.display().to_string())?;
-        resolve(core, extension)
-    } else {
-        core.resolved_check_bundles = vec![core.check_bundle.clone()];
-        Ok(core)
-    }
+pub fn parse(text: &str, source: &str) -> Result<CheckBundleManifest, String> {
+    let manifest: CheckBundleManifest =
+        toml::from_str(text).map_err(|error| format!("invalid check bundle {source}: {error}"))?;
+    let document: toml::Value =
+        toml::from_str(text).map_err(|error| format!("invalid check bundle {source}: {error}"))?;
+    reject_unknown_checker_fields(&document, source)?;
+    Ok(manifest)
 }
 
-pub fn parse(text: &str, source: &str) -> Result<CheckBundleManifest, String> {
-    toml::from_str(text).map_err(|error| format!("invalid check bundle {source}: {error}"))
+fn reject_unknown_checker_fields(document: &toml::Value, source: &str) -> Result<(), String> {
+    let Some(checks) = document.get("checks").and_then(toml::Value::as_array) else {
+        return Ok(());
+    };
+    for check in checks {
+        let Some(checker) = check.get("checker").and_then(toml::Value::as_table) else {
+            continue;
+        };
+        let Some(checker_type) = checker.get("type").and_then(toml::Value::as_str) else {
+            continue;
+        };
+        let allowed: &[&str] = match checker_type {
+            "invocation" => &["type", "args", "env", "stdin", "timeout_ms", "assertions"],
+            "any-invocation" | "all-invocations" => &["type", "invocations"],
+            "cli" => &["type", "command"],
+            _ => continue,
+        };
+        if let Some(field) = checker
+            .keys()
+            .find(|field| !allowed.contains(&field.as_str()))
+        {
+            return Err(format!(
+                "invalid check bundle {source}: unknown field `{field}` in Checker `{checker_type}`"
+            ));
+        }
+    }
+    Ok(())
 }
 
 pub fn validate(bundle: &CheckBundleManifest) -> Result<(), String> {
@@ -160,7 +141,6 @@ pub fn validate(bundle: &CheckBundleManifest) -> Result<(), String> {
     validate_version("check bundle", &bundle.check_bundle.version)?;
     let prefix = format!("{}/", bundle.check_bundle.name);
     let mut ids = HashSet::new();
-    let mut hierarchical_help_limits: Option<&HelpLimits> = None;
     for check in &bundle.checks {
         if !check.id.starts_with(&prefix) || check.id.len() == prefix.len() {
             return Err(format!(
@@ -172,47 +152,58 @@ pub fn validate(bundle: &CheckBundleManifest) -> Result<(), String> {
             return Err(format!("duplicate check identifier {}", check.id));
         }
         match check.evaluation_method {
-            EvaluationMethod::Deterministic => {
+            EvaluationMethod::Mechanistic => {
                 if check.checker.is_none() || check.skill.is_some() || check.evidence.is_some() {
                     return Err(format!(
-                        "deterministic check {} must have one checker and no agent fields",
+                        "mechanistic check {} must have one checker and no judgment fields",
                         check.id
                     ));
                 }
-                if let Some(CheckerDefinition::HierarchicalHelp { limits, .. }) = &check.checker
-                    && (limits.command_count == 0
-                        || limits.command_depth == 0
-                        || limits.document_bytes == 0
-                        || limits.search_results == 0
-                        || limits.total_commands == 0
-                        || limits.timeout_ms == 0)
+            }
+            EvaluationMethod::JudgmentBased => {
+                let built_in = bundle.check_bundle.name == "clilint";
+                if built_in
+                    && (check.checker.is_some()
+                        || check.skill.is_none()
+                        || check.evidence.is_none())
                 {
                     return Err(format!(
-                        "hierarchical-help checker {} has a zero limit",
+                        "built-in judgment-based check {} must have a skill and evidence invocation",
                         check.id
                     ));
                 }
-                if let Some(CheckerDefinition::HierarchicalHelp { limits, .. }) = &check.checker {
-                    if hierarchical_help_limits.is_some_and(|expected| expected != limits) {
-                        return Err(format!(
-                            "hierarchical-help checkers in {} must use the same limits",
-                            bundle.check_bundle.name
-                        ));
-                    }
-                    hierarchical_help_limits = Some(limits);
-                }
-            }
-            EvaluationMethod::AiAgent => {
-                if check.checker.is_some() || check.skill.is_none() || check.evidence.is_none() {
+                if !built_in
+                    && (check.checker.is_none()
+                        || check.skill.is_some()
+                        || check.evidence.is_some())
+                {
                     return Err(format!(
-                        "AI-agent check {} must have a skill and evidence invocation",
+                        "bundle-owned judgment-based check {} must have one Checker CLI and no host-managed judgment fields",
                         check.id
                     ));
                 }
-                let skill = check.skill.as_ref().expect("checked above");
-                validate_name("skill", &skill.name)?;
-                validate_version("skill", &skill.version)?;
+                if let Some(skill) = &check.skill {
+                    validate_name("skill", &skill.name)?;
+                    validate_version("skill", &skill.version)?;
+                }
             }
+        }
+        if bundle.check_bundle.name != "clilint"
+            && !matches!(
+                check.checker,
+                Some(CheckerDefinition::Cli { ref command }) if !command.is_empty()
+            )
+        {
+            return Err(format!(
+                "bundle-owned check {} must declare a nonempty Checker CLI command",
+                check.id
+            ));
+        }
+        if matches!(
+            check.checker,
+            Some(CheckerDefinition::Cli { ref command }) if command.is_empty()
+        ) {
+            return Err(format!("Checker CLI {} has an empty command", check.id));
         }
     }
     Ok(())
@@ -353,7 +344,7 @@ mod tests {
         let bundle = parse(text, "codekiln-help").unwrap();
         validate(&bundle).unwrap();
         assert_eq!(bundle.check_bundle.name, "codekiln-help");
-        assert_eq!(bundle.checks.len(), 10);
+        assert_eq!(bundle.checks.len(), 1);
     }
 
     #[test]
@@ -365,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unknown_hierarchical_help_behavior() {
+    fn rejects_unknown_checker_type() {
         let invalid = r#"
 format_version = 1
 extends = "clilint"
@@ -376,16 +367,15 @@ version = "1.0.0"
 id = "invalid/help/example"
 title = "Invalid"
 severity = "error"
-evaluation_method = "deterministic"
+evaluation_method = "mechanistic"
 [checks.checker]
-type = "hierarchical-help"
-behavior = "invented"
+type = "invented"
 "#;
         assert!(parse(invalid, "test").unwrap_err().contains("invented"));
     }
 
     #[test]
-    fn rejects_zero_hierarchical_help_limit() {
+    fn rejects_empty_checker_cli_command() {
         let invalid = r#"
 format_version = 1
 extends = "clilint"
@@ -396,14 +386,13 @@ version = "1.0.0"
 id = "invalid/help/example"
 title = "Invalid"
 severity = "error"
-evaluation_method = "deterministic"
+evaluation_method = "mechanistic"
 [checks.checker]
-type = "hierarchical-help"
-behavior = "outline"
-command_count = 0
+type = "cli"
+command = []
 "#;
         let bundle = parse(invalid, "test").unwrap();
-        assert!(validate(&bundle).unwrap_err().contains("zero limit"));
+        assert!(validate(&bundle).unwrap_err().contains("nonempty"));
     }
 
     #[test]
@@ -419,7 +408,7 @@ command_count = 0
         let check = bundle
             .checks
             .iter_mut()
-            .find(|check| check.evaluation_method == EvaluationMethod::AiAgent)
+            .find(|check| check.evaluation_method == EvaluationMethod::JudgmentBased)
             .unwrap();
         check.skill.as_mut().unwrap().name = "bad skill".into();
         assert!(validate(&bundle).unwrap_err().contains("invalid skill"));
@@ -439,11 +428,10 @@ version = "1.0.0"
 id = "team/help/team-flag"
 title = "Help mentions the team flag"
 severity = "warn"
-evaluation_method = "deterministic"
+evaluation_method = "mechanistic"
 [checks.checker]
-type = "invocation"
-args = ["--help"]
-assertions = [{ type = "stdout-contains-any", values = ["--team"] }]
+type = "cli"
+command = ["team-checker"]
 "#,
             "extension",
         )

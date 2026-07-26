@@ -450,47 +450,86 @@ requirement that answer 3 attached to the `Good` and `Excellent` ratings.
 
 ## Open Questions
 
-### 16 - How does a check bundle add a new expectation without a change to the Clilint binary, whether Clilint settles it mechanically or an agent judges it against a rubric?
+### 16 - How can a check bundle define setup, evidence gathering, and assessment for a new check without changing the Clilint binary?
 
 > Context from the drafting agent, for question 16.
 >
-> **Read the session record before answering:**
+> **Read the prior explore record:**
 > [Reframing the extension architecture for judgment-based checks](references/brainstorm-reframing-plugin-architecture-for-judgment-based-checks-influenced-by-jig-idea.md).
-> It holds the survey of eleven other extension systems, the project vision that
-> reframed this question, and the corrections that produced the wording above.
+> It contains the survey of other extension systems and the corrections that
+> preceded the model below.
 >
-> This question was restated on 2026-07-25. The earlier wording asked how a
-> bundle expresses "new behavior," and listed four missing capabilities: reading
-> values out of a command's JSON output, iterating over them, substituting them
-> into later invocations, and repeating that on discovered child commands. All
-> four are about collecting evidence. None is about judgment. Answering that
-> version would decide the architecture in favor of mechanical checks alone,
-> when the project needs mechanical checks and rubric-based judgment to be
-> equally comfortable.
+> **Read the plugin comparison:**
+> [Check extension model comparison](experiments/check-extension-model-comparison/README.md).
+> It applies one CLI Guidelines check through both a whole-check entry point and
+> a phase-oriented extension. Both models include mechanistic and agent paths
+> that return the same assessment structure.
 >
-> The concrete problem has not changed. Each `codekiln-help` check names
-> `type = "hierarchical-help"` and one `behavior` value from a fixed Rust enum,
-> so the bundle file says which behaviors to evaluate while the 873 lines of
-> `src/help_checker.rs` decide what each behavior means. A bundle that requires
-> a change to Clilint cannot serve the project's purpose: a person or team
-> writes their own standard, installs it, and has an agent verify a tool against
-> it while building that tool.
+> **codekiln's current mental model.** A check bundle defines a collection of
+> checks. A check has three lifecycle phases:
 >
-> Three positions came out of the session. They are the agent's, and the project
-> owner has not accepted them:
+> 1. Optionally set up the environment once, like setup in a unit-testing
+>    framework.
+> 2. Gather evidence. A script or an Agent Skill-like set of instructions could
+>    do this work. The instructions could call scripts, exercise several paths
+>    through a CLI, or use tools to inspect a codebase or website.
+> 3. Assess the evidence against a rubric. The assessment may be deterministic
+>    or may use an LLM as judge through a typed interface such as BAML. The
+>    rating may be categorical, such as `Poor`, `Minimal`, `Acceptable`, `Good`,
+>    and `Excellent`, or numerical; that choice remains open.
 >
-> 1. The distinction that matters is collecting evidence versus evaluating it,
->    not mechanical versus judged. Clilint already has that split but in two
->    incompatible shapes: a deterministic check carries a `checker`, while an AI
->    check carries a `skill` plus an `evidence` invocation.
-> 2. Fixing what a check must return is what lets checks be written in a
->    language the host does not speak. Powerpipe and pre-commit both did this.
->    ESLint and pi could not, because a check is a callback in the host runtime.
-> 3. Collecting evidence is the hard part, and it has three candidate answers:
->    Clilint collects it from data in the bundle, the bundle ships a script
->    Clilint runs, or the agent collects it from instructions. Repeatability
->    differs across the three, so the choice may belong to each check rather
->    than to the system.
+> **codekiln's model does not constrain the scope of a check.** A check is a
+> logical unit of verification whose boundary belongs to the check author. One
+> check may gather evidence once and verify several related things against that
+> evidence.
+>
+> **codekiln requires a shared assessment and finding structure.** The purpose
+> of a check is to give an agent building something structured feedback about
+> what does not meet the check's expectations and by how much. An assessment
+> reports the overall extent to which the check is met and contains warning or
+> error findings that describe what is out of sync. Mechanistic code produces
+> this structure automatically. For LLM judgment, an agent receives the
+> evidence and rubric and produces the same structure. A format chosen
+> separately by each check would prevent Clilint and other tools from processing
+> findings consistently. The exact assessment and finding fields remain to be
+> designed.
+>
+> codekiln generally prefers declarative designs because they are easier to
+> maintain and reason about. This product class is still taking shape, so
+> codekiln wants to begin with an imperative lifecycle whose sequence is easier
+> to understand and prototype. A later design may identify a useful declarative
+> model after concrete checks reveal the repeated concepts.
+>
+> **Terminology remains open.** The current code uses `checker` for the
+> mechanism that performs a deterministic check, while agent checks carry
+> separate `evidence` and `skill` fields. The prior drafting agent introduced
+> `evaluator`, `rule`, and `expectation` without defining them. codekiln has not
+> adopted those terms. If `checker` remains, this question must define whether
+> it means the complete lifecycle or a smaller part.
+>
+> **Lifecycle hooks are possibilities, not decisions.** codekiln raised hooks
+> at both bundle and check scope. The drafting agent distinguishes the bundle
+> installation lifecycle, where `post-install` would run, from a check run,
+> where `pre-gather-evidence` and `pre-assessment` would run. codekiln has not
+> identified a concrete use case that requires any of these hooks.
+>
+> codekiln has settled one boundary: adding a check does not require a Clilint
+> binary change. A binary change is needed only when a check requires a new
+> execution capability or a change to the shared protocol.
+>
+> **Question 16 remains unanswered.** The lifecycle and shared output structure
+> describe what a check must be able to do and return. They do not define the
+> plugin or extension system that lets a bundle supply those capabilities
+> without adding each check to the Clilint binary.
+>
+> The experiment's drafting agent recommends the phase-oriented extension:
+> each check has a bundle-local manifest and resources; the manifest declares
+> optional setup, evidence gathering, and assessment phases; each phase selects
+> an out-of-process command or an external agent skill; and all phases exchange
+> versioned documents with Clilint. The complete recommendation and trade-offs
+> are in the experiment's `findings.md`. codekiln has not accepted this
+> recommendation. Question 16 remains open until codekiln accepts or revises a
+> concrete extension model.
 
 <ANSWER_HERE>
 

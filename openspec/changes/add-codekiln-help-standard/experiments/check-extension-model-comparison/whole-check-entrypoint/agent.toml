@@ -1,0 +1,10 @@
+format_version = 1
+check = "cli-guidelines/help/concise-default"
+title = "Default help is concise and useful"
+protocol = "clilint-check-v1"
+rubric = "../shared/rubric.md"
+output_contract = "../shared/assessment-contract.md"
+
+[entrypoint]
+runner = "agent-skill"
+path = "skills/concise-default-help/SKILL.md"

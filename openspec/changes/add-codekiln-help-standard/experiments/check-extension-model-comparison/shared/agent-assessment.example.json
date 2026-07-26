@@ -1,0 +1,44 @@
+{
+  "format_version": 1,
+  "check": "cli-guidelines/help/concise-default",
+  "rating": "minimal",
+  "evidence": {
+    "format_version": 1,
+    "observations": {
+      "no-arguments": {
+        "args": [],
+        "exit_status": 0,
+        "stdout": "kiln-demo - work with hosted repositories\n\nUsage: kiln-demo <command>\n\nExample:\n  kiln-demo repo list\n",
+        "stderr": ""
+      },
+      "full-help": {
+        "args": [
+          "--help"
+        ],
+        "exit_status": 0,
+        "stdout": "kiln-demo - work with hosted repositories\n\nUsage: kiln-demo <command>\n\nCommands:\n  repo list    List repositories visible to the current credentials\n\nOptions:\n  -h, --help   Show full help\n\nExample:\n  kiln-demo repo list\n",
+        "stderr": ""
+      }
+    }
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "expectation": "Default help tells the caller how to request full help.",
+      "observed": "The default output does not mention --help.",
+      "evidence_refs": [
+        "observations.no-arguments.stdout"
+      ],
+      "evaluation_method": "mechanistic"
+    },
+    {
+      "severity": "warning",
+      "expectation": "The example teaches a likely task.",
+      "observed": "The example shows syntax but does not explain what the caller will learn from the repository list.",
+      "evidence_refs": [
+        "observations.no-arguments.stdout"
+      ],
+      "evaluation_method": "llm"
+    }
+  ]
+}

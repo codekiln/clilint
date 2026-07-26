@@ -57,7 +57,7 @@ removed work from this change. These items need no further decision.
 - [ ] 6.5 Record a local bundle source as a path relative to the project. `clilint bundle install ../mybundle` writes an absolute, unnormalized path into the committed `.clilint/config.toml` (`src/project_config.rs:266`)
 - [ ] 6.6 Remove `check_bundle::load_resolved`, superseded by `project_config::load_for_check` and now unused (`src/check_bundle.rs:134`)
 - [ ] 6.7 Rename the `conformance-packages` capability to match the check-bundle terminology, or record in `proposal.md` why it keeps the earlier identifier
-- [ ] 6.8 Give each prototype its own named subfolder under `experiments/`, with a README describing what it tests and how to run it
+- [x] 6.8 Give each prototype its own named subfolder under `experiments/`, with a README describing what it tests and how to run it
 - [ ] 6.9 Add `references/` notes for mise, uv, Dev Container Features, Claude Code plugin marketplaces, and RuleSync, each of which shaped an installation decision
 - [ ] 6.10 Run the mise format, lint, test, and OpenSpec validation tasks after the reductions
 

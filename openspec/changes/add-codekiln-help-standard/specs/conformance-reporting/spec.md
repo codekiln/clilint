@@ -12,8 +12,9 @@ Message SHALL belong to that result.
 ### Requirement: Result and message summaries
 The report SHALL count Check Results and Check Errors separately from Info,
 Warning, and Error Check Messages. Clilint's process exit status SHALL be
-nonzero when a report contains a Check Error or an Error-level Check Message.
-A Score by itself SHALL NOT determine the process exit status.
+nonzero when a report contains a Check Error, an Error-level Check Message, or
+a Check that is Awaiting Assessment. A Score by itself SHALL NOT determine
+the process exit status.
 
 #### Scenario: Check Result with several messages
 - **WHEN** one Check Result contains two Error messages and one Warning message
@@ -22,6 +23,10 @@ A Score by itself SHALL NOT determine the process exit status.
 #### Scenario: Score zero without an Error message
 - **WHEN** one valid Check Result has a Score of `0.0` and only Warning messages
 - **THEN** the summary preserves the Score without counting a Check Error or Error-level Check Message
+
+#### Scenario: Check is Awaiting Assessment
+- **WHEN** a judgment-based Check is Awaiting Assessment
+- **THEN** the summary records the unfinished Check and Clilint exits nonzero
 
 ## MODIFIED Requirements
 

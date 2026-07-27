@@ -73,9 +73,10 @@ clilint check my-cli
 clilint check ./path/to/my-cli --format json
 ```
 
-Clilint exits with code 1 for a Check Error or an Error Check Message. A lower
-Score alone does not determine the exit code. Invalid commands, bundles, and
-Assessment files exit with code 2 and write an error to standard error.
+Clilint exits with code 1 for a Check Error, an Error Check Message, or a Check
+that is Awaiting Assessment. A lower Score alone does not determine the exit
+code. Invalid commands, bundles, and Assessment files exit with code 2 and
+write an error to standard error.
 
 ## Add project-specific checks
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from collections import deque
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -437,8 +436,6 @@ class HelpChecker:
                 "limit": TOTAL_COMMANDS_LIMIT,
             }
         command = [*self.target, *path, *arguments]
-        environment = os.environ.copy()
-        environment["CLILINT_OFFLINE"] = "1"
         with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
             try:
                 completed = subprocess.run(
@@ -447,7 +444,6 @@ class HelpChecker:
                     stdin=subprocess.DEVNULL,
                     stdout=stdout_file,
                     stderr=stderr_file,
-                    env=environment,
                     check=False,
                     timeout=COMMAND_TIMEOUT_SECONDS,
                 )

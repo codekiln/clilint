@@ -91,7 +91,7 @@ fn human_output_names_both_check_methods() {
     assert_cmd::Command::new(cargo_bin!("clilint"))
         .args(["check", fixture("useful-help-cli").to_str().unwrap()])
         .assert()
-        .success()
+        .code(1)
         .stdout(predicate::str::contains("mechanistic"))
         .stdout(predicate::str::contains("judgment-based"))
         .stdout(predicate::str::contains("Awaiting Assessment"))
@@ -99,7 +99,7 @@ fn human_output_names_both_check_methods() {
 }
 
 #[test]
-fn error_message_exits_one_but_warning_does_not() {
+fn error_message_and_awaiting_assessment_exit_one() {
     assert_cmd::Command::new(cargo_bin!("clilint"))
         .args(["check", fixture("bad-cli").to_str().unwrap()])
         .assert()
@@ -110,7 +110,8 @@ fn error_message_exits_one_but_warning_does_not() {
     assert_cmd::Command::new(cargo_bin!("clilint"))
         .args(["check", fixture("useful-help-cli").to_str().unwrap()])
         .assert()
-        .success();
+        .code(1)
+        .stdout(predicate::str::contains("Awaiting Assessment"));
 }
 
 #[test]
@@ -230,17 +231,18 @@ fn local_bundle_install_records_a_relative_path_and_can_be_removed() {
 }
 
 #[test]
-fn installed_codekiln_help_and_its_extension_run_in_inheritance_order() {
+fn installed_codekiln_help_and_an_added_bundle_run_in_declared_order() {
     let directory = tempdir().unwrap();
-    let extension = directory.path().join("extension");
-    copy_fixture_bundle("checker-bundle", &extension);
-    let manifest_path = extension.join("clilint.toml");
+    let added_bundle = directory.path().join("added-bundle");
+    copy_fixture_bundle("checker-bundle", &added_bundle);
+    let manifest_path = added_bundle.join("clilint.toml");
     let manifest = fs::read_to_string(&manifest_path)
         .unwrap()
-        .replace("extends = \"clilint\"", "extends = \"codekiln-help\"");
+        .replace("extends = \"clilint\"", "extends = \"codekiln-help\"")
+        .replace("fixture-checker", "aaa-checker");
     fs::write(manifest_path, manifest).unwrap();
 
-    for bundle in [check_bundle("codekiln-help"), extension] {
+    for bundle in [check_bundle("codekiln-help"), added_bundle] {
         assert_cmd::Command::new(cargo_bin!("clilint"))
             .current_dir(directory.path())
             .arg("bundle")
@@ -259,22 +261,35 @@ fn installed_codekiln_help_and_its_extension_run_in_inheritance_order() {
         ])
         .output()
         .unwrap();
-    assert!(output.status.success());
+    assert_eq!(output.status.code(), Some(1));
     let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(
         report["check_bundles"],
         serde_json::json!([
             {"name": "clilint", "version": "0.0.2"},
             {"name": "codekiln-help", "version": "0.1.0"},
-            {"name": "fixture-checker", "version": "1.0.0"}
+            {"name": "aaa-checker", "version": "1.0.0"}
         ])
     );
+    let bundle_order = report["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|record| record["check"].as_str())
+        .map(|check| check.split_once('/').unwrap().0)
+        .fold(Vec::new(), |mut names, name| {
+            if names.last().copied() != Some(name) {
+                names.push(name);
+            }
+            names
+        });
+    assert_eq!(bundle_order, ["clilint", "codekiln-help", "aaa-checker"]);
     assert_eq!(
         check(&report, "codekiln-help/help/hierarchical")["result"]["score"],
         4.0
     );
     assert_eq!(
-        check(&report, "fixture-checker/help/default-output")["outcome"],
+        check(&report, "aaa-checker/help/default-output")["outcome"],
         "result"
     );
 }
@@ -360,7 +375,6 @@ version = "1.0.0"
 [[checks]]
 id = "malformed/protocol/output"
 title = "Malformed output"
-severity = "error"
 evaluation_method = "mechanistic"
 [checks.checker]
 type = "cli"
@@ -395,7 +409,6 @@ version = "1.0.0"
 [[checks]]
 id = "invalid/protocol/example"
 title = "Invalid"
-severity = "error"
 evaluation_method = "mechanistic"
 [checks.checker]
 type = "cli"
@@ -544,7 +557,7 @@ fn judgment_checker_cli_uses_the_file_based_two_pass_handoff() {
         ])
         .output()
         .unwrap();
-    assert!(first.status.success());
+    assert_eq!(first.status.code(), Some(1));
     let first: serde_json::Value = serde_json::from_slice(&first.stdout).unwrap();
     let pending = check(&first, "fixture-judgment/docs/first-task");
     assert_eq!(pending["outcome"], "awaiting-assessment");
@@ -576,6 +589,8 @@ fn judgment_checker_cli_uses_the_file_based_two_pass_handoff() {
             bundle.to_str().unwrap(),
             "--assessment",
             assessment_path.to_str().unwrap(),
+            "--assessment",
+            fixture("useful-help-assessment.json").to_str().unwrap(),
             "--format",
             "json",
         ])

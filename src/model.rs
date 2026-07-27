@@ -10,55 +10,10 @@ pub struct CheckBundleIdentity {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Severity {
-    Error,
-    Warn,
-    Info,
-}
-
-impl Severity {
-    pub fn rank(self) -> u8 {
-        match self {
-            Self::Info => 0,
-            Self::Warn => 1,
-            Self::Error => 2,
-        }
-    }
-
-    pub fn message_level(self) -> CheckMessageLevel {
-        match self {
-            Self::Error => CheckMessageLevel::Error,
-            Self::Warn => CheckMessageLevel::Warning,
-            Self::Info => CheckMessageLevel::Info,
-        }
-    }
-
-    pub fn failed_score(self) -> Score {
-        Score::new(match self {
-            Self::Error => 0.0,
-            Self::Warn => 2.0,
-            Self::Info => 3.0,
-        })
-        .expect("built-in scores are valid")
-    }
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum EvaluationMethod {
     Mechanistic,
     JudgmentBased,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum RatingLevel {
-    Poor,
-    Minimal,
-    Acceptable,
-    Good,
-    Excellent,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -293,7 +248,9 @@ impl Report {
     }
 
     pub fn has_failures(&self) -> bool {
-        self.summary.check_errors > 0 || self.summary.error_messages > 0
+        self.summary.check_errors > 0
+            || self.summary.awaiting_assessment > 0
+            || self.summary.error_messages > 0
     }
 }
 
@@ -454,5 +411,38 @@ mod tests {
         };
         report.recalculate();
         assert!(!report.has_failures());
+    }
+
+    #[test]
+    fn awaiting_assessment_is_an_unfinished_process_status() {
+        let mut report = Report {
+            format_version: 3,
+            tool_version: "test".into(),
+            check_bundles: Vec::new(),
+            target: "target".into(),
+            checks: vec![CheckRecord {
+                check: "bundle/check".into(),
+                title: "Check".into(),
+                method: EvaluationMethod::JudgmentBased,
+                outcome: CheckOutcome::AwaitingAssessment {
+                    assessment_request: AssessmentRequest {
+                        request_id: "request-1".into(),
+                        evidence_digest: "sha256:evidence".into(),
+                        skill: SkillRef {
+                            name: "assess-example".into(),
+                            version: "1.0.0".into(),
+                        },
+                        rubric: "Apply the rubric.".into(),
+                        evidence: serde_json::json!({"stdout": "example"}),
+                    },
+                },
+            }],
+            summary: ReportSummary::default(),
+        };
+
+        report.recalculate();
+
+        assert_eq!(report.summary.awaiting_assessment, 1);
+        assert!(report.has_failures());
     }
 }

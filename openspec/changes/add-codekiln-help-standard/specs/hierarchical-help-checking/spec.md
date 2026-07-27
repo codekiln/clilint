@@ -2,9 +2,9 @@
 
 ### Requirement: One complete codekiln-help check
 The `codekiln-help` check bundle SHALL define one hierarchical-help check whose
-Checker CLI gathers the command hierarchy and help documents, verifies every
-help behavior in this specification, and returns one Check Result with one
-Score and zero or more Check Messages.
+Checker CLI gathers the command hierarchy and help documents, verifies the
+help responses and non-interactive behavior it can observe, and returns one
+Check Result with one Score and zero or more Check Messages.
 
 #### Scenario: Check a CLI tool that follows the standard
 - **WHEN** a user checks a nested CLI tool that follows the standard with the `codekiln-help` check bundle
@@ -78,14 +78,14 @@ machine-readable output, and avoiding interactive output.
 - **WHEN** programmatic help mentions JSON and sections but does not explain piping or avoiding interactive output
 - **THEN** the Check Result contains a Check Message for the omitted required guidance
 
-### Requirement: Non-interactive offline checking
+### Requirement: Non-interactive checking
 The hierarchical-help checker SHALL close standard input for tested CLI tool
-invocations, capture output without a terminal, omit network access, and
-complete without starting a pager or another interactive program.
+invocations, capture output without a terminal, and complete without starting
+a pager or another interactive program.
 
 #### Scenario: Check captured help safely
 - **WHEN** Clilint runs the hierarchical-help check with closed input and captured output
-- **THEN** the checker completes without waiting for input, opening another program, or using the network
+- **THEN** the checker completes without waiting for input or opening another program
 
 ### Requirement: Focused hierarchical-help evidence
 Each hierarchical-help Check Message SHALL identify the relevant command path,

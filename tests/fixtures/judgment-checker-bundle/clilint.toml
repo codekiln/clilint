@@ -8,7 +8,6 @@ version = "1.0.0"
 [[checks]]
 id = "fixture-judgment/docs/first-task"
 title = "Documentation teaches a first task"
-severity = "warn"
 evaluation_method = "judgment-based"
 
 [checks.checker]

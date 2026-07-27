@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::model::{
-    CheckBundleIdentity, EvaluationMethod, InvocationSpec, RatingLevel, Severity, SkillRef,
+    CheckBundleIdentity, CheckMessageLevel, EvaluationMethod, InvocationSpec, SkillRef,
 };
 
 const CORE_CHECK_BUNDLE: &str = include_str!("../check-bundles/clilint/clilint.toml");
@@ -15,10 +15,6 @@ pub struct CheckBundleManifest {
     pub check_bundle: CheckBundleIdentity,
     #[serde(default)]
     pub extends: Option<String>,
-    #[serde(default)]
-    pub exclude: Vec<String>,
-    #[serde(default)]
-    pub strengthen: Vec<Strengthening>,
     pub checks: Vec<CheckDefinition>,
     #[serde(skip)]
     pub resolved_check_bundles: Vec<CheckBundleIdentity>,
@@ -26,20 +22,10 @@ pub struct CheckBundleManifest {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct Strengthening {
-    pub check: String,
-    pub severity: Severity,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct CheckDefinition {
     pub id: String,
     pub title: String,
-    pub severity: Severity,
     pub evaluation_method: EvaluationMethod,
-    #[serde(default)]
-    pub required_for_ratings: Vec<RatingLevel>,
     #[serde(default)]
     pub checker: Option<CheckerDefinition>,
     #[serde(default)]
@@ -54,13 +40,16 @@ pub struct CheckDefinition {
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum CheckerDefinition {
     SingleInvocation {
+        failure_message_level: CheckMessageLevel,
         #[serde(flatten)]
         invocation: InvocationCheck,
     },
     AnyInvocation {
+        failure_message_level: CheckMessageLevel,
         invocations: Vec<InvocationCheck>,
     },
     AllInvocations {
+        failure_message_level: CheckMessageLevel,
         invocations: Vec<InvocationCheck>,
     },
     Cli {
@@ -113,8 +102,18 @@ fn reject_unknown_checker_fields(document: &toml::Value, source: &str) -> Result
             continue;
         };
         let allowed: &[&str] = match checker_type {
-            "single-invocation" => &["type", "args", "env", "stdin", "timeout_ms", "assertions"],
-            "any-invocation" | "all-invocations" => &["type", "invocations"],
+            "single-invocation" => &[
+                "type",
+                "failure_message_level",
+                "args",
+                "env",
+                "stdin",
+                "timeout_ms",
+                "assertions",
+            ],
+            "any-invocation" | "all-invocations" => {
+                &["type", "failure_message_level", "invocations"]
+            }
             "cli" => &["type", "command"],
             _ => continue,
         };
@@ -210,87 +209,62 @@ pub fn validate(bundle: &CheckBundleManifest) -> Result<(), String> {
 }
 
 pub fn resolve(
-    mut inherited_bundle: CheckBundleManifest,
-    extension: CheckBundleManifest,
+    mut resolved_bundle: CheckBundleManifest,
+    bundle_to_add: CheckBundleManifest,
 ) -> Result<CheckBundleManifest, String> {
-    validate(&extension)?;
-    let parent_name = extension
+    validate(&bundle_to_add)?;
+    let included_bundle_name = bundle_to_add
         .extends
         .as_deref()
         .ok_or_else(|| {
             format!(
-                "extension check bundle {} must declare extends",
-                extension.check_bundle.name
+                "check bundle {} must declare extends",
+                bundle_to_add.check_bundle.name
             )
         })?
         .to_owned();
-    if extension.check_bundle.name == inherited_bundle.check_bundle.name {
+    if bundle_to_add.check_bundle.name == resolved_bundle.check_bundle.name {
         return Err(format!(
-            "extension check bundle {} conflicts with the inherited check bundle identity",
-            extension.check_bundle.name
+            "check bundle {} conflicts with an included check bundle identity",
+            bundle_to_add.check_bundle.name
         ));
     }
-    let parent_installed = parent_name == inherited_bundle.check_bundle.name
-        || inherited_bundle
+    let included_bundle_is_available = included_bundle_name == resolved_bundle.check_bundle.name
+        || resolved_bundle
             .resolved_check_bundles
             .iter()
-            .any(|identity| identity.name == parent_name);
-    if !parent_installed {
+            .any(|identity| identity.name == included_bundle_name);
+    if !included_bundle_is_available {
         return Err(format!(
-            "extension check bundle {} extends unavailable check bundle {:?}",
-            extension.check_bundle.name, parent_name
-        ));
-    }
-    if let Some(check) = extension.exclude.first() {
-        return Err(format!(
-            "extension check bundle {} cannot exclude inherited check {check}",
-            extension.check_bundle.name
+            "check bundle {} extends unavailable check bundle {:?}",
+            bundle_to_add.check_bundle.name, included_bundle_name
         ));
     }
 
-    let mut inherited: HashSet<String> = inherited_bundle
+    let mut check_ids: HashSet<String> = resolved_bundle
         .checks
         .iter()
         .map(|check| check.id.clone())
         .collect();
-    for check in &extension.checks {
-        if !inherited.insert(check.id.clone()) {
+    for check in &bundle_to_add.checks {
+        if !check_ids.insert(check.id.clone()) {
             return Err(format!(
-                "extension check {} conflicts with an inherited check",
+                "check {} conflicts with a Check from an included bundle",
                 check.id
             ));
         }
     }
-    for strengthening in &extension.strengthen {
-        let check = inherited_bundle
-            .checks
-            .iter_mut()
-            .find(|check| check.id == strengthening.check)
-            .ok_or_else(|| {
-                format!(
-                    "extension tries to strengthen unknown inherited check {}",
-                    strengthening.check
-                )
-            })?;
-        if strengthening.severity.rank() < check.severity.rank() {
-            return Err(format!(
-                "extension weakens inherited check {} from {:?} to {:?}",
-                check.id, check.severity, strengthening.severity
-            ));
-        }
-        check.severity = strengthening.severity;
-    }
 
-    if inherited_bundle.resolved_check_bundles.is_empty() {
-        inherited_bundle
+    if resolved_bundle.resolved_check_bundles.is_empty() {
+        resolved_bundle
             .resolved_check_bundles
-            .push(inherited_bundle.check_bundle.clone());
+            .push(resolved_bundle.check_bundle.clone());
     }
-    inherited_bundle
+    resolved_bundle
         .resolved_check_bundles
-        .push(extension.check_bundle.clone());
-    inherited_bundle.checks.extend(extension.checks);
-    Ok(inherited_bundle)
+        .push(bundle_to_add.check_bundle.clone());
+    resolved_bundle.checks.extend(bundle_to_add.checks);
+    Ok(resolved_bundle)
 }
 
 pub fn core() -> Result<CheckBundleManifest, String> {
@@ -366,7 +340,6 @@ version = "1.0.0"
 [[checks]]
 id = "invalid/help/example"
 title = "Invalid"
-severity = "error"
 evaluation_method = "mechanistic"
 [checks.checker]
 type = "invented"
@@ -385,7 +358,6 @@ version = "1.0.0"
 [[checks]]
 id = "invalid/help/example"
 title = "Invalid"
-severity = "error"
 evaluation_method = "mechanistic"
 [checks.checker]
 type = "cli"
@@ -414,7 +386,7 @@ command = []
         assert!(validate(&bundle).unwrap_err().contains("invalid skill"));
     }
 
-    fn extension() -> CheckBundleManifest {
+    fn additional_bundle() -> CheckBundleManifest {
         parse(
             r#"
 format_version = 1
@@ -427,22 +399,21 @@ version = "1.0.0"
 [[checks]]
 id = "team/help/team-flag"
 title = "Help mentions the team flag"
-severity = "warn"
 evaluation_method = "mechanistic"
 [checks.checker]
 type = "cli"
 command = ["team-checker"]
 "#,
-            "extension",
+            "additional bundle",
         )
         .unwrap()
     }
 
     #[test]
-    fn extension_is_additive() {
+    fn combining_bundles_is_additive() {
         let core = parse(CORE_CHECK_BUNDLE, "test").unwrap();
         let core_count = core.checks.len();
-        let resolved = resolve(core, extension()).unwrap();
+        let resolved = resolve(core, additional_bundle()).unwrap();
         assert_eq!(resolved.checks.len(), core_count + 1);
         assert!(
             resolved
@@ -453,34 +424,38 @@ command = ["team-checker"]
     }
 
     #[test]
-    fn rejects_weakening() {
-        let core = parse(CORE_CHECK_BUNDLE, "test").unwrap();
-        let mut extension = extension();
-        extension.strengthen.push(Strengthening {
-            check: "clilint/basics/success-exit".into(),
-            severity: Severity::Warn,
-        });
-        assert!(resolve(core, extension).unwrap_err().contains("weakens"));
-    }
+    fn rejects_deferred_composition_fields() {
+        for field in ["exclude", "strengthen", "required_for_ratings"] {
+            let invalid = format!(
+                r#"
+format_version = 1
+extends = "clilint"
+{field} = []
 
-    #[test]
-    fn rejects_exclusion() {
-        let core = parse(CORE_CHECK_BUNDLE, "test").unwrap();
-        let mut extension = extension();
-        extension.exclude.push("clilint/basics/success-exit".into());
-        assert!(
-            resolve(core, extension)
-                .unwrap_err()
-                .contains("cannot exclude")
-        );
+[check_bundle]
+name = "team"
+version = "1.0.0"
+
+[[checks]]
+id = "team/help/team-flag"
+title = "Help mentions the team flag"
+evaluation_method = "mechanistic"
+[checks.checker]
+type = "cli"
+command = ["team-checker"]
+"#
+            );
+            let error = parse(&invalid, "additional bundle").unwrap_err();
+            assert!(error.contains(field), "{error}");
+        }
     }
 
     #[test]
     fn rejects_check_bundle_identity_conflict() {
         let core = parse(CORE_CHECK_BUNDLE, "test").unwrap();
-        let mut extension = extension();
-        extension.check_bundle.name = "clilint".into();
-        extension.checks[0].id = "clilint/help/team-flag".into();
-        assert!(resolve(core, extension).unwrap_err().contains("conflicts"));
+        let mut bundle = additional_bundle();
+        bundle.check_bundle.name = "clilint".into();
+        bundle.checks[0].id = "clilint/help/team-flag".into();
+        assert!(resolve(core, bundle).unwrap_err().contains("conflicts"));
     }
 }

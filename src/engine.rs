@@ -75,8 +75,6 @@ pub fn check(
     {
         return Err(format!("Assessment references unknown Check {unknown}"));
     }
-    checks.sort_by(|left, right| left.check.cmp(&right.check));
-
     let mut report = Report {
         format_version: 3,
         tool_version: VERSION.into(),
@@ -119,16 +117,23 @@ fn built_in_mechanistic(
         .checker
         .as_ref()
         .ok_or_else(|| format!("mechanistic Check {} has no checker", check.id))?;
-    let (passed, evidence, failures) = match checker {
-        CheckerDefinition::SingleInvocation { invocation } => {
+    let (passed, evidence, failures, failure_message_level) = match checker {
+        CheckerDefinition::SingleInvocation {
+            failure_message_level,
+            invocation,
+        } => {
             let (observation, failures) = evaluate(invocation, runner)?;
             (
                 failures.is_empty(),
                 serde_json::json!({"observations": [observation]}),
                 failures,
+                *failure_message_level,
             )
         }
-        CheckerDefinition::AnyInvocation { invocations } => {
+        CheckerDefinition::AnyInvocation {
+            failure_message_level,
+            invocations,
+        } => {
             let mut observations = Vec::new();
             let mut all_failures = Vec::new();
             let mut passed = false;
@@ -142,9 +147,13 @@ fn built_in_mechanistic(
                 passed,
                 serde_json::json!({"observations": observations}),
                 if passed { Vec::new() } else { all_failures },
+                *failure_message_level,
             )
         }
-        CheckerDefinition::AllInvocations { invocations } => {
+        CheckerDefinition::AllInvocations {
+            failure_message_level,
+            invocations,
+        } => {
             let mut observations = Vec::new();
             let mut failures = Vec::new();
             for invocation in invocations {
@@ -156,6 +165,7 @@ fn built_in_mechanistic(
                 failures.is_empty(),
                 serde_json::json!({"observations": observations}),
                 failures,
+                *failure_message_level,
             )
         }
         CheckerDefinition::Cli { .. } => {
@@ -173,9 +183,9 @@ fn built_in_mechanistic(
         }
     } else {
         CheckResult {
-            score: check.severity.failed_score(),
+            score: Score::new(0.0).expect("valid failed binary Score"),
             messages: vec![CheckMessage {
-                level: check.severity.message_level(),
+                level: failure_message_level,
                 message: failures.join("; "),
                 evidence,
             }],
@@ -398,16 +408,37 @@ fn validate_response(
             response.method, check.evaluation_method
         ));
     }
-    if let CheckOutcome::Result { result } = &response.outcome {
-        result.validate()?;
-    }
-    if let CheckOutcome::AwaitingAssessment { assessment_request } = &response.outcome {
-        if check.evaluation_method != EvaluationMethod::JudgmentBased {
-            return Err("a mechanistic Checker CLI cannot return Awaiting Assessment".into());
+    match &response.outcome {
+        CheckOutcome::Result { result } => result.validate()?,
+        CheckOutcome::Error { error } if error.message.trim().is_empty() => {
+            return Err("a Check Error message cannot be empty".into());
         }
-        if assessment_request.request_id != request_id {
-            return Err("Awaiting Assessment uses the wrong request binding".into());
+        CheckOutcome::AwaitingAssessment { assessment_request } => {
+            if check.evaluation_method != EvaluationMethod::JudgmentBased {
+                return Err("a mechanistic Checker CLI cannot return Awaiting Assessment".into());
+            }
+            if assessment_request.request_id != request_id {
+                return Err("Awaiting Assessment uses the wrong request binding".into());
+            }
+            if assessment_request.evidence_digest.trim().is_empty() {
+                return Err("Awaiting Assessment must include an evidence digest".into());
+            }
+            if assessment_request.skill.name.trim().is_empty()
+                || assessment_request.skill.version.trim().is_empty()
+            {
+                return Err("Awaiting Assessment must identify a Skill and version".into());
+            }
+            if assessment_request.rubric.trim().is_empty() {
+                return Err("Awaiting Assessment must include a rubric".into());
+            }
+            if assessment_request.evidence.is_null() {
+                return Err("Awaiting Assessment must include evidence".into());
+            }
         }
+        CheckOutcome::Skipped { reason } if reason.trim().is_empty() => {
+            return Err("a Skipped outcome must explain why the Check was skipped".into());
+        }
+        CheckOutcome::Error { .. } | CheckOutcome::Skipped { .. } => {}
     }
     Ok(response.outcome)
 }
@@ -608,6 +639,48 @@ mod tests {
     }
 
     #[test]
+    fn checker_response_rejects_empty_error_and_skipped_details() {
+        let check = cli_check(EvaluationMethod::Mechanistic);
+        for outcome in [
+            CheckOutcome::Error {
+                error: CheckError {
+                    message: " ".into(),
+                },
+            },
+            CheckOutcome::Skipped { reason: "".into() },
+        ] {
+            let response = checker_response(EvaluationMethod::Mechanistic, outcome);
+            assert!(validate_response(response, "request-1", &check).is_err());
+        }
+    }
+
+    #[test]
+    fn checker_response_rejects_incomplete_assessment_request() {
+        let check = cli_check(EvaluationMethod::JudgmentBased);
+        let outcome = CheckOutcome::AwaitingAssessment {
+            assessment_request: AssessmentRequest {
+                request_id: "request-1".into(),
+                evidence_digest: "".into(),
+                skill: crate::model::SkillRef {
+                    name: "assess-example".into(),
+                    version: "1.0.0".into(),
+                },
+                rubric: "Apply the rubric.".into(),
+                evidence: serde_json::json!({"stdout": "example"}),
+            },
+        };
+
+        let error = validate_response(
+            checker_response(EvaluationMethod::JudgmentBased, outcome),
+            "request-1",
+            &check,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("evidence digest"));
+    }
+
+    #[test]
     fn checker_process_failures_are_distinct() {
         let output = |exit_status, timed_out| ProcessOutput {
             exit_status,
@@ -623,5 +696,29 @@ mod tests {
                 .unwrap()
                 .contains("status 7")
         );
+    }
+
+    fn cli_check(evaluation_method: EvaluationMethod) -> CheckDefinition {
+        CheckDefinition {
+            id: "bundle/check".into(),
+            title: "Check".into(),
+            evaluation_method,
+            checker: Some(CheckerDefinition::Cli {
+                command: vec!["checker".into()],
+            }),
+            skill: None,
+            evidence: None,
+            bundle_root: None,
+        }
+    }
+
+    fn checker_response(method: EvaluationMethod, outcome: CheckOutcome) -> CheckerResponse {
+        CheckerResponse {
+            format_version: 1,
+            request_id: "request-1".into(),
+            check: "bundle/check".into(),
+            method,
+            outcome,
+        }
     }
 }

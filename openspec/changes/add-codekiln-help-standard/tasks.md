@@ -16,11 +16,11 @@ superseded parts of that work. The checked boxes preserve what was completed;
 groups 6 onward describe the replacement and removal work still required.
 
 - [x] 2.1 Rename package, rule, and check terms consistently across CLI options, bundle files, Rust types, reports, and documentation without compatibility aliases
-- [x] 2.2 Extend check-bundle installation and loading to preserve the order of inherited bundles and checks
+- [x] 2.2 Extend check-bundle installation and loading to preserve the declared order of combined bundles and Checks
 - [x] 2.3 Add named-bundle installation and accept a local bundle path as an installation source
-- [x] 2.4 Allow local check bundles to extend `codekiln-help` without weakening inherited checks
+- [x] 2.4 Allow local check bundles to include `codekiln-help` through `extends` while preserving its Checks unchanged
 - [x] 2.5 Apply the same format and validation to `codekiln-help` and check bundles supplied by users
-- [x] 2.6 Add tests for the built-in core bundle, installed `codekiln-help`, and a local extension
+- [x] 2.6 Add tests for the built-in core bundle, installed `codekiln-help`, and an additional local bundle
 
 ## 3. Add Hierarchical Help Checking
 
@@ -37,7 +37,7 @@ groups 6 onward describe the replacement and removal work still required.
 - [x] 4.2 Add tested CLI fixtures covering child-command discovery, shared help, optional programmatic guidance, outlines, sections, search, and viewers
 - [x] 4.3 Add check-bundle examples that connect check definitions to passing and failing fixture behavior
 - [x] 4.4 Add integration tests that identify failures at root, group, and deeply nested command paths
-- [x] 4.5 Add non-interactive tests for closed input, plain output, offline execution, and viewer behavior
+- [x] 4.5 Add non-interactive tests for closed input, plain output, and viewer behavior
 - [x] 4.6 Add tests that default help serves people and agents and that `--programmatic` retains it while adding programmatic guidance
 
 ## 5. Document and Verify
@@ -96,7 +96,7 @@ bundle-owned Check and keeps the project as its working directory. Questions
 - [x] 8.2 Make Check Result, Check Error, Awaiting Assessment, and Skipped mutually exclusive Check Outcomes
 - [x] 8.3 Accept finite fractional Scores from `0.0` through `4.0` and enforce the settled Check Message rules for imperfect and perfect Scores
 - [x] 8.4 Bind each Check Outcome to its request, check identifier, and check-bundle identity and reject mismatches
-- [x] 8.5 Count Check Results, Check Errors, and Check Message levels separately and derive process exit status from Check Errors and Error-level Check Messages rather than Score
+- [x] 8.5 Count Check Results, Check Errors, Awaiting Assessment outcomes, and Check Message levels separately and derive process exit status from unfinished work or errors rather than Score
 - [x] 8.6 Adapt built-in checker outcomes to the new model according to answer 21
 - [x] 8.7 Update JSON and human reports to present Scores, Check Messages, Check Errors, and mechanistic or judgment-based methods separately
 - [x] 8.8 Add serialization, range, message-rule, mismatch, summary, and exit-status tests for the new model
@@ -151,4 +151,7 @@ bundle-owned Check and keeps the project as its working directory. Questions
 - [x] 13.4 Verify the implementation against the proposal, design, and every delta specification
 - [x] 13.5 Replace fixed Checker output and log limits with temporary-file outcome capture and standard-error propagation, then update the guides and protocol tests
 - [x] 13.6 Remove help search from the first standard, Checker CLI, fixtures, tests, and guides after review
-- [ ] 13.7 Run the spec-sync workflow before archiving the change
+- [x] 13.7 Remove unused manifest controls, keep built-in failure message levels with the built-in Checker definitions, and keep failed binary Scores at `0.0`
+- [x] 13.8 Preserve declared Check order, validate proposed project configuration before writing it, validate every Checker outcome, and make Awaiting Assessment exit with status 1
+- [x] 13.9 Align the Checker, design, specifications, and guides with the execution behavior Clilint can verify
+- [ ] 13.10 Run the spec-sync workflow before archiving the change

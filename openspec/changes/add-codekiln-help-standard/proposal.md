@@ -84,7 +84,7 @@ checks.
 - Adds a check-bundle authoring guide based on the complete `codekiln-help`
   check bundle.
 - Adds documentation for CLI authors whose tools adopt the help standard.
-- Keeps the `codekiln-help` check independent of network access.
+- Defines offline help as part of the tested CLI standard.
 
 ## Citations
 

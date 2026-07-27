@@ -56,7 +56,10 @@ model, agent harness, checker programming language, or operating system.
 A Check Outcome SHALL contain exactly one of a Check Result, Check Error,
 Awaiting Assessment state, or Skipped state. A Check Error SHALL NOT contain a
 Score. A checker timeout, unsuccessful exit, or invalid protocol response
-SHALL produce a Check Error rather than a scored Check Result.
+SHALL produce a Check Error rather than a scored Check Result. Clilint SHALL
+reject an empty Check Error message, empty Skipped reason, or Awaiting
+Assessment state without a request binding, Skill, rubric, evidence digest,
+and evidence.
 
 #### Scenario: Checker fails before scoring
 - **WHEN** a Checker CLI exits unsuccessfully before returning a valid Check Result
@@ -65,6 +68,10 @@ SHALL produce a Check Error rather than a scored Check Result.
 #### Scenario: Checker still needs judgment
 - **WHEN** a judgment-based Checker CLI has gathered evidence but has no returned Assessment
 - **THEN** its Check Outcome is Awaiting Assessment rather than a Check Result or Check Error
+
+#### Scenario: Checker omits required outcome details
+- **WHEN** a Checker CLI returns an outcome without the details needed to understand or complete it
+- **THEN** Clilint rejects the outcome as an invalid protocol response
 
 ### Requirement: Shared Check Result
 A completed mechanistic or judgment-based check SHALL return the same Check

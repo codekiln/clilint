@@ -120,9 +120,6 @@ def main():
     if path not in PATHS:
         print("error: unknown command path", file=sys.stderr)
         return 2
-    if os.environ.get("CLILINT_OFFLINE") != "1":
-        print("error: hierarchical help checker did not request offline behavior", file=sys.stderr)
-        return 4
     programmatic = "--programmatic" in rest
     json_format = "--format" in rest and rest[rest.index("--format") + 1] == "json"
     operation = rest[0] if rest and not rest[0].startswith("-") else "overview"

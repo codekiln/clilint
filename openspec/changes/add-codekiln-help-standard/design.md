@@ -13,9 +13,8 @@ set that demonstrates how to define and distribute a separate standard.
 2. It gives check-bundle authors a complete example they can copy and adapt
    when making their own Clilint check bundles.
 
-The experiments under `experiments/` compare help interfaces and check
-extension models. Each named experiment records its result in its own
-`findings.md`.
+The experiments under `experiments/` compare help interfaces and ways to add
+Checks. Each named experiment records its result in its own `findings.md`.
 
 ## Goals / Non-Goals
 
@@ -28,7 +27,7 @@ extension models. Each named experiment records its result in its own
 - Make `codekiln-help` installable separately from other future codekiln check
   bundles.
 - Use `codekiln-help` to teach bundle authors how custom check bundles are
-  organized, tested, installed, and extended.
+  organized, tested, installed, and combined.
 - Let an installed bundle add a complete check without adding check-specific
   code to Clilint.
 - Return one outcome for each check. A completed result gives the check's
@@ -55,7 +54,8 @@ evidence, and a way to score that evidence. Its author chooses its logical
 scope. One check may gather evidence once and verify several related matters.
 
 A **check bundle** is a named, versioned set of related checks. A check bundle
-can extend another check bundle. `codekiln-help` is one check bundle.
+can name one earlier bundle through its `extends` field. `codekiln-help` is
+one check bundle.
 
 A **checker** performs a check's complete lifecycle: any one-time setup,
 evidence gathering, and production of a Check Outcome.
@@ -101,11 +101,13 @@ Message is different: it describes a serious problem in the tested project
 inside an otherwise valid Check Result. A checker crash, timeout, or invalid
 protocol response produces a Check Error and no Score.
 
+Clilint exits with status 1 when a report contains a Check Error, an
+Error-level Check Message, or a Check that is Awaiting Assessment. A Score
+alone does not determine process status.
+
 This vocabulary gives each term one job. It also avoids explaining that a
-"rule" contains a "check" inside a "package." The current command-line option,
-manifest fields, Rust types, and JSON report still use those older terms.
-This change will rename those public interfaces directly, without
-compatibility aliases.
+"rule" contains a "check" inside a "package." This change renames those public
+interfaces directly, without compatibility aliases.
 
 ### Treat `codekiln-help` as a worked check-bundle example
 
@@ -120,7 +122,7 @@ The check-bundle documentation will explain:
 - how one check can verify several related behaviors;
 - how a Check names its Checker CLI;
 - how to install the bundle and run its checks;
-- how another bundle can extend it; and
+- how another bundle includes it through `extends`; and
 - how its fixtures and tests demonstrate passing and failing behavior.
 
 The source files will link to that guide. The guide will link back to the
@@ -319,6 +321,10 @@ remaining items are its arguments. The Checker inherits Clilint's environment
 and operating-system permissions. An explicitly installed local bundle is
 trusted code; the first protocol does not add a sandbox.
 
+The first protocol leaves Checker runtime packaging to bundle authors.
+[Issue #12](https://github.com/codekiln/clilint/issues/12) records the deferred
+work to make runtime packaging consistent across operating systems.
+
 Setup state and intermediate evidence remain private to the checker. A later
 protocol can expose phases if a concrete check needs Clilint to retain or
 repeat one phase.
@@ -342,6 +348,8 @@ The built-in core checks continue to use checkers compiled into Clilint in this
 change. They adopt the shared Check Outcome and Check Result model. Checks in
 local bundles use Checker CLIs. A later change can migrate built-in checkers
 after the CLI protocol has been used by a complete bundle.
+[Issue #11](https://github.com/codekiln/clilint/issues/11) records that
+migration.
 
 The [Checker CLI contract comparison](experiments/checker-cli-contract-comparison/README.md)
 demonstrates mechanistic and judgment-based Checker CLIs running from a tested
@@ -362,6 +370,11 @@ The checker will:
 5. copy returned `section` values into section commands;
 6. test non-interactive output; and
 7. return focused evidence with each Check Message.
+
+The offline standard remains a requirement for the tested CLI tool. A later
+Clilint execution capability can verify it by isolating the tested process
+from the network. Setting an environment variable is not evidence of network
+isolation.
 
 The bundle can split this work into several checks later if separate execution,
 configuration, or reporting proves useful.
@@ -592,7 +605,7 @@ one Score and zero or more Check Messages. The same result structure applies
 to mechanistic and judgment-based checks. Assessment remains specific to the
 judgment-based path.
 
-The first extension protocol standardizes the request and outcome
+The first Checker CLI protocol standardizes the request and outcome
 boundaries. Setup, intermediate evidence, and phase state remain inside the
 checker. This lets one check retain resources and state for its complete
 run without requiring Clilint to define phase ordering and state transfer.
@@ -614,7 +627,7 @@ chose the whole-check model because it provides the required extension point
 with less protocol. The first version does not add lifecycle hooks without a
 concrete check that needs them.
 
-The [check extension model comparison](experiments/check-extension-model-comparison/README.md)
+The [Checker model comparison](experiments/check-extension-model-comparison/README.md)
 records the whole-check and phase-oriented alternatives that led to this
 answer.
 
@@ -765,6 +778,30 @@ until that need is concrete.
 The drafting agent had included `help search` to return command paths and
 section values. The current standard keeps `help`, `outline`, `section`, and
 JSON command discovery.
+
+### 27 - What process status should Clilint return while a Check is Awaiting Assessment?
+
+The drafting agent chose status 1 because the requested check run is
+unfinished. The report still contains the request, evidence, Skill, and rubric
+needed to complete the Check. A later run can return status 0 after every
+applicable Check has a completed outcome and no Check Error or Error-level
+Check Message.
+
+A Score alone does not determine process status. Awaiting Assessment is a
+separate Check Outcome, so this choice does not add a severity setting or
+convert pending work into a Score.
+
+### 28 - Can the first hierarchical-help Checker prove that the tested CLI tool works offline?
+
+No. The drafting agent removed the `CLILINT_OFFLINE` environment variable from
+the Checker because an environment variable cannot prevent network access.
+The first Checker closes input, captures output without a terminal, and
+prevents interactive help behavior. The offline behavior remains part of the
+standard for CLI authors, but the Checker does not claim to verify it.
+
+A later Clilint execution capability can verify offline behavior by isolating
+the tested process from the network. That capability belongs in the shared
+execution protocol rather than in one Checker's convention.
 
 ## Open Questions
 

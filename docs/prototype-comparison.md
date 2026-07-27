@@ -34,7 +34,9 @@ mechanistic.
 - `clilint check` is the 0.0.2 workflow. The prototype's `score` and `explain` subcommands, profiles, plain output, output-file option, and minimum-score gate are absent.
 - Human and JSON reports give every completed Check a Score from `0.0` through
   `4.0` and focused Check Messages.
-- Check identifiers are scoped by check bundle. The core bundle is embedded in the binary, and local extensions can add checks or strengthen inherited severity.
+- Check identifiers are scoped by check bundle. The core bundle is embedded
+  in the binary. A local bundle can declare `extends` to include another
+  bundle's Checks before its own.
 - JSON reports represent Check Result, Check Error, Awaiting Assessment, and
   Skipped as distinct outcomes.
 - `--assessment` accepts repeatable JSON Assessment files. Clilint checks that

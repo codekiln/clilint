@@ -10,7 +10,6 @@ version = "0.1.0"
 [[checks]]
 id = "codekiln-help/help/hierarchical"
 title = "Help is navigable at every command path"
-severity = "error"
 evaluation_method = "mechanistic"
 
 [checks.checker]

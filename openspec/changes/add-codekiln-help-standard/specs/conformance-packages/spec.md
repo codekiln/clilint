@@ -14,12 +14,12 @@ in later Clilint runs without a separate activation step.
 - **WHEN** a user runs Clilint without installing another check bundle
 - **THEN** Clilint uses only the built-in `clilint` check bundle
 
-### Requirement: Named check-bundle inheritance
-The `codekiln-help` check bundle SHALL extend `clilint`. Clilint SHALL preserve
-the order and checks of the core bundle, an installed named bundle, and any
-local bundle that extends them.
+### Requirement: Named check-bundle composition
+The `codekiln-help` check bundle SHALL declare `extends = "clilint"`. Clilint
+SHALL preserve the declared order and Checks of the core bundle, an installed
+named bundle, and any local bundle that includes them through `extends`.
 
-#### Scenario: Resolve codekiln help inheritance
+#### Scenario: Resolve codekiln help composition
 - **WHEN** Clilint resolves the named `codekiln-help` check bundle
 - **THEN** the report identifies `clilint` followed by `codekiln-help` and contains checks from both bundles
 
@@ -31,7 +31,7 @@ Check Result, Check Messages, test fixtures, and report output.
 
 #### Scenario: Bundle author studies codekiln-help
 - **WHEN** a check-bundle author reads the `codekiln-help` guide
-- **THEN** the guide points to the bundle file, explains its identity, inheritance, Check, and Checker CLI, and links each example to relevant tests
+- **THEN** the guide points to the bundle file, explains its identity, `extends` relationship, Check, and Checker CLI, and links each example to relevant tests
 
 #### Scenario: Use the same check-bundle validation
 - **WHEN** Clilint loads the installed `codekiln-help` check bundle
@@ -51,6 +51,10 @@ components.
 - **WHEN** a project declares a local check bundle that Clilint cannot load or validate
 - **THEN** Clilint stops before running any check and identifies the declared bundle
 
+#### Scenario: Proposed installation is invalid
+- **WHEN** installing or removing a bundle would leave an invalid project configuration
+- **THEN** Clilint rejects the change and preserves the previous configuration
+
 ## MODIFIED Requirements
 
 ### Requirement: Bundled global standard
@@ -63,23 +67,24 @@ user has not installed another check bundle.
 
 ### Requirement: Local extension packages
 Clilint SHALL install a user-authored check bundle from a local path and SHALL
-evaluate its checks in later runs together with every check bundle it extends.
+evaluate its Checks after every check bundle named through its `extends`
+field.
 
-#### Scenario: Check with an extension of the core bundle
-- **WHEN** an installed local check bundle extends `clilint`
-- **THEN** the report contains Check Outcomes for the core checks and the local extension checks
+#### Scenario: Combine with the core bundle
+- **WHEN** an installed local check bundle declares `extends = "clilint"`
+- **THEN** the report contains Check Outcomes for the core Checks followed by the local bundle's Checks
 
-#### Scenario: Check with an extension of the codekiln help bundle
-- **WHEN** an installed local check bundle extends `codekiln-help`
-- **THEN** the report contains Check Outcomes for `clilint`, `codekiln-help`, and the local extension in that order
+#### Scenario: Combine with the codekiln help bundle
+- **WHEN** an installed local check bundle declares `extends = "codekiln-help"`
+- **THEN** the report contains Check Outcomes for `clilint`, `codekiln-help`, and the local bundle in that order
 
 ### Requirement: Additive conformance
-An extension check bundle MUST NOT remove, replace, or weaken a check inherited
-from another check bundle.
+A check bundle that declares `extends` MUST add its Checks after the included
+bundle. It MUST NOT remove, replace, or change Checks from the included bundle.
 
-#### Scenario: Check bundle attempts to weaken an inherited check
-- **WHEN** an extension excludes an inherited check or lowers its required result
-- **THEN** Clilint rejects the check bundle and identifies the conflicting check
+#### Scenario: Check bundle declares an unsupported composition control
+- **WHEN** a check bundle declares `exclude`, `strengthen`, or `required_for_ratings`
+- **THEN** Clilint rejects the unknown field
 
 ### Requirement: Package validation
 Clilint SHALL reject check-bundle data containing an invalid built-in checker,
@@ -103,6 +108,6 @@ access. A Checker CLI is responsible for any network access its Check requires.
 - FROM: `Bundled global standard`
 - TO: `Built-in core check bundle`
 - FROM: `Local extension packages`
-- TO: `Local extension check bundles`
+- TO: `Combined local check bundles`
 - FROM: `Package validation`
 - TO: `Check-bundle validation`

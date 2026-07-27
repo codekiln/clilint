@@ -39,7 +39,6 @@ version = "1.0.0"
 [[checks]]
 id = "team/help/team-option"
 title = "Help describes the team option"
-severity = "warn"
 evaluation_method = "mechanistic"
 
 [checks.checker]
@@ -105,8 +104,9 @@ standard error.
 A judgment-based Checker uses `"method": "judgment-based"`. When the Checker
 has gathered its evidence and needs an agent to judge it, the Check Outcome
 uses `"outcome": "awaiting-assessment"` and includes the evidence and rubric.
-An external agent writes an Assessment JSON file, and a later Clilint
-invocation supplies that file to the same Checker:
+Clilint exits with code 1 while the Check is unfinished. An external agent
+writes an Assessment JSON file, and a later Clilint invocation supplies that
+file to the same Checker:
 
 ```sh
 clilint check ./my-cli --assessment ./assessment.json

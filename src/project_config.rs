@@ -54,6 +54,14 @@ pub fn load_for_check(
     direct_path: Option<&Path>,
 ) -> Result<CheckBundleManifest, String> {
     let config = load_config(root)?;
+    load_from_config(root, &config, direct_path)
+}
+
+fn load_from_config(
+    root: &Path,
+    config: &ProjectConfig,
+    direct_path: Option<&Path>,
+) -> Result<CheckBundleManifest, String> {
     let mut manifests = Vec::new();
     for (name, source) in &config.check_bundles {
         let BundleSource::Local { path } = source;
@@ -101,11 +109,11 @@ fn resolve_manifests(
                     .map(|bundle| bundle.check_bundle.name.clone())
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("check bundle inheritance is missing a parent or contains a cycle: {names}")
+                format!("check bundle dependencies contain a missing name or cycle: {names}")
             })?;
-        let extension = manifests.remove(next);
-        let name = extension.check_bundle.name.clone();
-        resolved = check_bundle::resolve(resolved, extension)?;
+        let bundle_to_add = manifests.remove(next);
+        let name = bundle_to_add.check_bundle.name.clone();
+        resolved = check_bundle::resolve(resolved, bundle_to_add)?;
         installed.insert(name);
     }
     Ok(resolved)
@@ -159,8 +167,8 @@ pub fn install(root: &Path, source: &Path) -> Result<Vec<BundleStatus>, String> 
     config
         .check_bundles
         .insert(manifest.check_bundle.name, BundleSource::Local { path });
+    let _ = load_from_config(root, &config, None)?;
     save_config(root, &config)?;
-    let _ = load_for_check(root, None)?;
     list(root)
 }
 
@@ -185,6 +193,7 @@ pub fn remove(root: &Path, name: &str) -> Result<(), String> {
     if config.check_bundles.remove(name).is_none() {
         return Err(format!("unknown check bundle {name}"));
     }
+    let _ = load_from_config(root, &config, None)?;
     save_config(root, &config)
 }
 
@@ -240,6 +249,10 @@ fn normalize_absolute(path: &Path) -> Result<PathBuf, String> {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
+    use tempfile::tempdir;
+
     use super::*;
 
     #[test]
@@ -260,5 +273,68 @@ mod tests {
         )
         .unwrap();
         assert_eq!(path, Path::new("checks"));
+    }
+
+    #[test]
+    fn failed_install_leaves_project_configuration_unchanged() {
+        let directory = tempdir().unwrap();
+        let bundle = directory.path().join("bundle");
+        write_test_bundle(&bundle, "broken", "missing");
+
+        let error = install(directory.path(), &bundle).unwrap_err();
+
+        assert!(error.contains("missing name or cycle"));
+        assert!(
+            load_config(directory.path())
+                .unwrap()
+                .check_bundles
+                .is_empty()
+        );
+        assert!(!directory.path().join(CONFIG_PATH).exists());
+    }
+
+    #[test]
+    fn removing_a_bundle_used_by_another_bundle_leaves_both_installed() {
+        let directory = tempdir().unwrap();
+        let parent = directory.path().join("parent");
+        let child = directory.path().join("child");
+        write_test_bundle(&parent, "parent", "clilint");
+        write_test_bundle(&child, "child", "parent");
+        install(directory.path(), &parent).unwrap();
+        install(directory.path(), &child).unwrap();
+
+        let error = remove(directory.path(), "parent").unwrap_err();
+
+        assert!(error.contains("missing name or cycle"));
+        let config = load_config(directory.path()).unwrap();
+        assert!(config.check_bundles.contains_key("parent"));
+        assert!(config.check_bundles.contains_key("child"));
+    }
+
+    fn write_test_bundle(path: &Path, name: &str, extends: &str) {
+        fs::create_dir_all(path).unwrap();
+        fs::write(
+            path.join("clilint.toml"),
+            format!(
+                r#"
+format_version = 1
+extends = "{extends}"
+
+[check_bundle]
+name = "{name}"
+version = "1.0.0"
+
+[[checks]]
+id = "{name}/example"
+title = "Example"
+evaluation_method = "mechanistic"
+
+[checks.checker]
+type = "cli"
+command = ["checker"]
+"#
+            ),
+        )
+        .unwrap();
     }
 }

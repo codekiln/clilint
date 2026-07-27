@@ -8,7 +8,6 @@ version = "1.0.0"
 [[checks]]
 id = "fixture-checker/help/default-output"
 title = "Default output points to help"
-severity = "warn"
 evaluation_method = "mechanistic"
 
 [checks.checker]

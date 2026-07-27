@@ -32,11 +32,12 @@ MAY return an Awaiting Assessment outcome containing the versioned Check
 Request, required Skill, rubric, and evidence. Clilint SHALL record that
 pending work in the report. After a later invocation supplies an Assessment
 JSON file, Clilint SHALL pass the Assessment to the same Checker CLI, which
-SHALL return a Check Result bound to the request.
+SHALL return a Check Result bound to the request. Clilint SHALL exit nonzero
+while a Check is Awaiting Assessment.
 
 #### Scenario: Check without an AI assessment
 - **WHEN** a tested CLI tool is checked without a supplied assessment for the help-quality check
-- **THEN** the report contains the check request, required Skill, rubric, evidence, and an Awaiting Assessment outcome
+- **THEN** the report contains the check request, required Skill, rubric, evidence, and an Awaiting Assessment outcome and Clilint exits nonzero
 
 #### Scenario: External agent uses another harness
 - **WHEN** an external agent follows the recorded Skill and writes a valid Assessment JSON file

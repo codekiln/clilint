@@ -12,7 +12,8 @@ clilint check my-cli --format json > clilint-report.json
 ```
 
 An unfinished judgment-based Check has `"outcome": "awaiting-assessment"`.
-The report contains the evidence and rubric that an agent needs.
+The report contains the evidence and rubric that an agent needs, and Clilint
+exits with code 1 until the Check has a completed result.
 
 Give the report to an agent that has the
 [`assess-cli-help`](../skills/assess-cli-help/SKILL.md) Skill. For example:

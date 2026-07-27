@@ -1,0 +1,1 @@
+Default output should tell the caller to use --help.

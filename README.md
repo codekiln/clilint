@@ -4,19 +4,31 @@
 [![CI](https://github.com/codekiln/clilint/actions/workflows/ci.yml/badge.svg)](https://github.com/codekiln/clilint/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Clilint lets people express reusable packages of testable expectations for command-line programs, so builders can state a standard once and check tools against it. Its built-in package is intended to grow into an opinionated superset of the [Command Line Interface Guidelines](https://clig.dev/): automate as many of those guidelines as possible, then add sensible defaults for newer uses such as agent-readable help.
+Clilint checks the behavior of command-line programs. It gives each Check a
+Score from `0.0` through `4.0` and returns focused messages that a person or
+coding agent can use to improve the program.
 
-The current release runs common help, version, error, and no-argument commands. Its built-in checks cover help and version options, exit codes, error messages, output for scripts, and color codes in piped output. A local extension package can add expectations for a project or team. Optional AI assessments handle questions that need judgment, and Clilint reports those results separately from repeatable checks.
+The built-in checks cover common help, version, error, output, and
+non-interactive behavior. Projects can install local check bundles for
+additional standards. Each added Check names a Checker command-line program.
+The Checker can use any programming language, scripts, tools, or AI agents.
 
-Clilint is for people who build command-line tools and teams that want those tools to follow shared expectations. The longer-term [project direction](docs/vision.md) includes reusable preference packages and command-line help that people and agents can explore without leaving the terminal.
+Clilint is for people and teams building command-line tools. Its Scores and
+Check Messages give coding agents specific feedback they can use to improve a
+tool.
 
 ## Project status
 
-Clilint is an early-stage `0.0.x` project. Command behavior, package files, and report formats may change before version 1.0.
+Clilint is an early-stage `0.0.x` project. Command behavior, check-bundle
+files, and report formats may change before version 1.0.
 
-Current releases support Apple silicon macOS, Intel macOS, x86-64 Linux, and x86-64 Windows. [GitHub Releases](https://github.com/codekiln/clilint/releases/latest) publishes the downloads and their SHA-256 checksums.
-
-The [continuous integration workflow](https://github.com/codekiln/clilint/actions/workflows/ci.yml) runs the repository checks. [@codekiln](https://github.com/codekiln) maintains the project. Use [GitHub Issues](https://github.com/codekiln/clilint/issues) for help and bug reports.
+Current releases support Apple silicon macOS, Intel macOS, x86-64 Linux, and
+x86-64 Windows. [GitHub Releases](https://github.com/codekiln/clilint/releases/latest)
+provides downloads and SHA-256 checksums. The
+[continuous integration workflow](https://github.com/codekiln/clilint/actions/workflows/ci.yml)
+runs the repository checks. [@codekiln](https://github.com/codekiln)
+maintains the project. Use [GitHub Issues](https://github.com/codekiln/clilint/issues)
+for help and bug reports.
 
 ## Install
 
@@ -26,59 +38,65 @@ With [mise](https://mise.jdx.dev/):
 mise use -g github:codekiln/clilint
 ```
 
-See [Installation](docs/installation.md) for every supported download, checksum verification, PATH setup, and troubleshooting.
+See [Installation](docs/installation.md) for other supported systems,
+checksum verification, PATH setup, and troubleshooting.
 
 ## Check a command
 
-Start by asking Clilint to check itself:
+Start by checking Clilint:
 
 ```sh
 clilint check clilint
 ```
 
-A current release reports results like these:
+A report contains one outcome for each check:
 
 ```text
-CLI Lint clilint 0.0.2
-Deterministic score: 98/100
+Clilint clilint 0.0.2
+Target: clilint
 
-clilint/agent/non-interactive   warn       deterministic assertion failed
-clilint/help/long-option        pass       deterministic declared behavioral check passed
-clilint/help/useful-example     unassessed ai-agent run the required skill to assess the captured evidence
+clilint/help/long-option                    mechanistic      Score 4.00
+clilint/help/useful-example                 judgment-based   Awaiting Assessment
 
-Deterministic: 15 pass, 1 warn, 0 fail, 0 skip
-AI agent: 0 pass, 0 warn, 0 fail, 0 skip, 1 unassessed
+16 results, 0 Check Errors, 1 awaiting Assessment, 0 skipped
+0 Info, 0 Warning, 0 Error Check Messages
 ```
 
-Each line names a rule and its result. `pass`, `warn`, and `fail` come from repeatable checks. `unassessed` means an optional AI assessment has not been attached.
+A completed Check Result has a Score. A Score below `4.0` includes a Check
+Message explaining what could improve. A Check Error means the checker could
+not produce a valid result; it has no Score.
 
-Replace the final `clilint` with a command name or executable path:
+Replace the final argument with your command name or executable path:
 
 ```sh
 clilint check my-cli
 clilint check ./path/to/my-cli --format json
 ```
 
-Clilint exits with code 1 when a repeatable check or attached AI assessment fails. Invalid commands, packages, or assessment files exit with code 2 and write an error to stderr.
+Clilint exits with code 1 for a Check Error, an Error Check Message, or a Check
+that is Awaiting Assessment. A lower Score alone does not determine the exit
+code. Invalid commands, bundles, and Assessment files exit with code 2 and
+write an error to standard error.
 
-## What Clilint checks
+## Add project-specific checks
 
-The built-in rules check whether a command:
+Install a local check bundle from the project directory:
 
-- provides working `--help`, `-h`, `--version`, and `-V` options;
-- returns useful exit codes without hanging;
-- sends normal output and errors to the expected streams;
-- names errors and points the user toward help;
-- avoids color codes when output is piped; and
-- advertises structured and non-interactive modes for automation.
+```sh
+clilint bundle install ../my-checks
+clilint check ./my-cli
+```
 
-Clilint also captures help text for an optional AI assessment of whether the help teaches a likely task with a useful example.
+Clilint records the relative path in `.clilint/config.toml`. The
+[`codekiln-help` bundle](docs/codekiln-help.md) is a complete example that
+checks navigable help at every command path.
 
 ## Learn more
 
 - [Install Clilint on each supported system](docs/installation.md)
-- [Add project-specific checks with an extension package](docs/packages.md)
-- [Run and attach AI assessments](docs/ai-assessments.md)
+- [Install and author check bundles](docs/check-bundles.md)
+- [Implement the `codekiln-help` interface](docs/codekiln-help.md)
+- [Run and attach judgment-based Assessments](docs/ai-assessments.md)
 - [Read the project direction](docs/vision.md)
 - [Contribute to Clilint](CONTRIBUTING.md)
 

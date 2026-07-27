@@ -1,0 +1,17 @@
+{
+  "format_version": 1,
+  "request_id": "checker-cli-contract-comparison",
+  "check_id": "prototype/docs/first-task-clarity",
+  "assessor": "recorded-prototype",
+  "score": 2.75,
+  "messages": [
+    {
+      "level": "warning",
+      "message": "Explain what `serve` does and what successful output looks like.",
+      "evidence": {
+        "source": "README.md",
+        "observation": "The README names `target_cli.py serve` but does not explain the result."
+      }
+    }
+  ]
+}

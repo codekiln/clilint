@@ -1,8 +1,9 @@
 pub mod assessment;
+pub mod check_bundle;
 pub mod cli;
 pub mod engine;
 pub mod model;
-pub mod package;
+pub mod project_config;
 pub mod report;
 pub mod runner;
 

@@ -3,3 +3,4 @@
 set -euo pipefail
 
 cargo test --all-targets --all-features
+python3 -m unittest check-bundles/codekiln-help/test_checker.py

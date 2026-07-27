@@ -1,0 +1,15 @@
+format_version = 1
+extends = "clilint"
+
+[check_bundle]
+name = "fixture-checker"
+version = "1.0.0"
+
+[[checks]]
+id = "fixture-checker/help/default-output"
+title = "Default output points to help"
+evaluation_method = "mechanistic"
+
+[checks.checker]
+type = "cli"
+command = ["python3", "{bundle}/checker.py"]

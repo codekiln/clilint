@@ -8,10 +8,13 @@ use std::{
 
 use crate::model::{InvocationSpec, Observation};
 
+const DEFAULT_OUTPUT_LIMIT: usize = 1_048_576;
+
 pub struct Runner {
     target: String,
     default_timeout_ms: u64,
     cache: HashMap<String, Observation>,
+    execution_count: usize,
 }
 
 impl Runner {
@@ -20,12 +23,30 @@ impl Runner {
             target,
             default_timeout_ms,
             cache: HashMap::new(),
+            execution_count: 0,
         }
     }
 
     pub fn run(&mut self, spec: &InvocationSpec) -> Result<Observation, String> {
+        self.run_with_output_limit(spec, Some(DEFAULT_OUTPUT_LIMIT))
+    }
+
+    pub fn run_bounded(
+        &mut self,
+        spec: &InvocationSpec,
+        output_limit: usize,
+    ) -> Result<Observation, String> {
+        self.run_with_output_limit(spec, Some(output_limit))
+    }
+
+    fn run_with_output_limit(
+        &mut self,
+        spec: &InvocationSpec,
+        output_limit: Option<usize>,
+    ) -> Result<Observation, String> {
         let timeout_ms = spec.timeout_ms.unwrap_or(self.default_timeout_ms);
-        let key = serde_json::to_string(&(spec, timeout_ms)).map_err(|error| error.to_string())?;
+        let key = serde_json::to_string(&(spec, timeout_ms, output_limit))
+            .map_err(|error| error.to_string())?;
         if let Some(observation) = self.cache.get(&key) {
             return Ok(observation.clone());
         }
@@ -45,6 +66,7 @@ impl Runner {
         }
 
         let start = Instant::now();
+        self.execution_count += 1;
         let mut child = command
             .spawn()
             .map_err(|error| format!("could not run target {}: {error}", self.target))?;
@@ -67,8 +89,8 @@ impl Runner {
             .stderr
             .take()
             .ok_or_else(|| "target stderr was not available".to_owned())?;
-        let stdout_reader = thread::spawn(move || read_all(stdout));
-        let stderr_reader = thread::spawn(move || read_all(stderr));
+        let stdout_reader = thread::spawn(move || read_all(stdout, output_limit));
+        let stderr_reader = thread::spawn(move || read_all(stderr, output_limit));
 
         let deadline = start + Duration::from_millis(timeout_ms);
         let (status, timed_out) = loop {
@@ -108,11 +130,22 @@ impl Runner {
         self.cache.insert(key, observation.clone());
         Ok(observation)
     }
+
+    pub fn execution_count(&self) -> usize {
+        self.execution_count
+    }
 }
 
-fn read_all(mut reader: impl Read) -> std::io::Result<Vec<u8>> {
+fn read_all(mut reader: impl Read, limit: Option<usize>) -> std::io::Result<Vec<u8>> {
     let mut output = Vec::new();
-    reader.read_to_end(&mut output)?;
+    if let Some(limit) = limit {
+        reader
+            .by_ref()
+            .take(limit.saturating_add(1) as u64)
+            .read_to_end(&mut output)?;
+    } else {
+        reader.read_to_end(&mut output)?;
+    }
     Ok(output)
 }
 
@@ -170,5 +203,24 @@ mod tests {
         spec.stdin = Some("hello\n".into());
         let result = Runner::new("sh".into(), 1_000).run(&spec).unwrap();
         assert_eq!(result.stdout.trim(), "hello");
+    }
+
+    #[test]
+    fn reuses_an_identical_observation() {
+        let mut runner = Runner::new("printf".into(), 1_000);
+        let spec = invocation(&["hello"], None);
+        let first = runner.run(&spec).unwrap();
+        let second = runner.run(&spec).unwrap();
+        assert_eq!(first.stdout, second.stdout);
+        assert_eq!(runner.execution_count(), 1);
+    }
+
+    #[test]
+    fn bounds_captured_output() {
+        let mut runner = Runner::new("printf".into(), 1_000);
+        let result = runner
+            .run_bounded(&invocation(&["123456789"], None), 5)
+            .unwrap();
+        assert_eq!(result.stdout, "123456");
     }
 }

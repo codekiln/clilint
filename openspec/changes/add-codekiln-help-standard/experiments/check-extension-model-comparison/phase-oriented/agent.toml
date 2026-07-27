@@ -1,0 +1,20 @@
+format_version = 1
+check = "cli-guidelines/help/concise-default"
+title = "Default help is concise and useful"
+protocol = "clilint-check-phases-v1"
+rubric = "../shared/rubric.md"
+output_contract = "../shared/assessment-contract.md"
+
+[[phases]]
+name = "gather-evidence"
+runner = "command"
+command = ["python3", "gather.py"]
+input = "check-request-v1"
+output = "evidence-v1"
+
+[[phases]]
+name = "assess"
+runner = "agent-skill"
+path = "skills/assess-concise-default-help/SKILL.md"
+input = "evidence-v1"
+output = "assessment-v1"

@@ -1,41 +1,52 @@
 # Project direction
 
-Clilint is intended to be a behavioral test harness for command-line programs. It runs a command in defined ways, captures what happens, and evaluates rules: testable expectations about how the command should behave. A Clilint package is a reusable collection of those rules.
+Clilint helps people state what a command-line tool should do and gives coding
+agents useful feedback while they build it.
 
-Some rules use mechanical checks, called deterministic checks in the current reports. They compute a result without asking an AI to make a judgment. For example, a rule can require `--help` to finish, exit successfully, and write help text to standard output.
+A Check states one expectation about a project. A Checker gathers evidence
+and returns a Score with messages explaining what could improve. A check
+bundle groups related Checks so projects can reuse them.
 
-Other rules are judgment-based. For example, a rule can ask whether the help teaches a likely task with a useful example. Each judgment-based rule should have a rubric that describes the evidence to consider and what result levels such as pass, warning, failure, or unable to judge mean. An AI agent can apply that rubric to evidence captured by Clilint.
+Checks can ask whether `--help` exits successfully, whether a release pipeline
+runs in CI, whether help teaches a likely task, or whether a changelog explains
+important changes. Built-in checkers cover common mechanical behavior. Checks
+added through local bundles use Checker CLIs. They can use scripts, other
+tools, AI agents, or any programming language while Clilint keeps one request
+and outcome format.
 
-This scope is broader than static analysis or conventional linting. Clilint executes the target, observes its behavior, applies mechanical checks, and can ask an AI to evaluate qualities that need judgment.
+## Core and optional standards
 
-The project is not limited to one fixed checklist. A person or team should be able to choose a package of expectations when designing, generating, reviewing, or testing a command-line program.
+The built-in `clilint` bundle is intended to grow into an opinionated superset
+of the [Command Line Interface Guidelines](https://clig.dev/). Clilint should
+automate the guidelines it can evaluate reliably.
 
-## Core guidelines and additional opinions
+Optional bundles add focused standards. A project installs the bundles it
+wants, and a project bundle can add local expectations. The
+[`codekiln-help` bundle](codekiln-help.md) checks navigable offline help and
+serves as an example for bundle authors.
 
-The built-in package is intended to grow into an opinionated superset of the [Command Line Interface Guidelines](https://clig.dev/). Clilint should automate as many of those guidelines as can be evaluated responsibly. It can then add defaults for needs that the guidelines do not fully cover.
+## Mechanistic and judgment-based Checks
 
-The current release implements only part of that direction. It has one built-in package and accepts a local package that adds rules or makes an inherited rule more severe. The package format will need to develop before it can represent every kind of preference or combine several independently maintained packages.
+A Check is mechanistic when its Score and Check Messages require no human or
+model interpretation. Exit codes, output fields, and response times are common
+mechanistic evidence.
 
-## Help that people and agents can explore
+A Check is judgment-based when human or model interpretation affects its Score
+or messages. The Checker can still run scripts and other tools while gathering
+evidence. An external agent applies a rubric and returns an Assessment, which
+the Checker validates before producing the shared Check Result.
 
-One possible package could define richer documentation discovery for people and AI agents. Expectations might include:
-
-- `--help` gives a concise introduction and the most common actions;
-- every command provides a `help` subcommand;
-- the help subcommand provides an overview or table of contents before deeper detail;
-- detailed information remains available from the command line; and
-- a documentation website complements the command-line help when one exists.
-
-The exact interface is not settled. Open questions include the options accepted by a help subcommand, how help is organized across nested commands, and how command-line and website documentation stay consistent.
+The report identifies the method used for each result. Scores express the
+extent to which an expectation is met; Check Messages provide the specific
+feedback needed to improve it.
 
 ## Reusable expectations
 
-Packages should make preferences portable between projects. A package could become part of a request to build a command-line tool: given these expectations, create a tool for a particular job and show how it performs against them.
+Check bundles make project preferences reusable. A person can give a coding
+agent a bundle, ask it to build a CLI, and use the resulting Scores and
+messages to guide improvement.
 
-A future package-authoring workflow could also learn from existing command-line tools. A person could point an AI at one well-designed tool or a related family of tools. The AI could exercise their interfaces, identify repeated expectations, and propose mechanical and judgment-based rules. After review, that package could test a new tool so that its help, errors, output, and interaction patterns feel like they belong to the same family.
-
-The goal is to reproduce chosen expectations, not every observed detail. A generated package should distinguish behavior it observed from preferences it inferred, and a person should be able to reject accidental quirks before treating them as reusable rules.
-
-That model requires clear package composition, stable rule identities, evidence that another tool can inspect, and honest separation between mechanical checks and judgments made by AI. These are goals for the project rather than promises of the current release.
-
-The operational design for AI assessments and even the project name remain unsettled. [Design explorations](design-explorations.md) record candidate approaches and open questions without treating them as requirements.
+A future bundle-authoring workflow could study an existing CLI, propose
+candidate expectations, and let a person keep the preferences that matter.
+[Design explorations](design-explorations.md) records ideas that have not
+become product requirements.

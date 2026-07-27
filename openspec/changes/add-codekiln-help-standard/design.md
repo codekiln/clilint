@@ -315,29 +315,21 @@ the outcome before adding it to the report.
 
 The check bundle declares the Checker CLI as a nonempty command argument
 array. Clilint replaces the literal `{bundle}` placeholder in any argument
-with the installed bundle directory, then starts the command directly without
-a shell. This supports a bundled native executable as well as an
-interpreter-backed CLI without making Clilint depend on a programming
-language. The Checker inherits Clilint's environment and operating-system
-permissions. An explicitly installed local bundle is trusted code; the first
-protocol does not add a sandbox.
+with the installed bundle directory. The first item names the program and the
+remaining items are its arguments. The Checker inherits Clilint's environment
+and operating-system permissions. An explicitly installed local bundle is
+trusted code; the first protocol does not add a sandbox.
 
 Setup state and intermediate evidence remain private to the checker. A later
 protocol can expose phases if a concrete check needs Clilint to retain or
 repeat one phase.
 
 Clilint writes one JSON Check Request to the Checker's standard input and
-closes it. Standard output contains only one versioned JSON Check Outcome.
-Standard error contains Checker logs, not Check Messages. Logs remain separate
-because they describe checker execution and are most useful when the checker
-failed before producing a Check Result.
-
-Clilint owns the initial timeout and output limits. A bundle cannot raise them.
-Clilint reads both streams with fixed bounds. It rejects standard output that
-is too long. When Checker logs on standard error are too long, Clilint returns
-a Check Error that contains the part that fits and marks the logs as truncated.
-This keeps memory use bounded without adding per-bundle tuning before a
-concrete Checker needs it.
+closes it. The Checker writes one versioned JSON Check Outcome to standard
+output. Clilint directs that output to a temporary file and parses it after the
+Checker exits. Checker logs continue directly to Clilint's standard error and
+stay outside the Check Outcome. Clilint stops a Checker that exceeds the fixed
+run-time limit.
 
 A judgment-based Checker CLI may return Awaiting Assessment, expose a bundled
 Agent Skill and rubric to an external agent, and later validate a returned
@@ -391,9 +383,9 @@ configuration, or reporting proves useful.
   receives.
 - **An outcome can be attached to the wrong or an earlier request** → Bind
   each outcome to the versioned request and reject a mismatched binding.
-- **A Checker CLI can hang or return excessive or malformed output** → Bound
-  its run time and output, require one Check Outcome on standard output, retain
-  only bounded checker logs, and report protocol failures as Check Errors.
+- **A Checker CLI can hang or return malformed output** → Limit its run time,
+  parse one Check Outcome from a temporary file, and report process or
+  protocol failures as Check Errors.
 - **An unloadable bundle could produce a report with fewer checks than the
   project declared** → Fail the entire run before checking the tested CLI tool.
 
@@ -408,7 +400,8 @@ configuration, or reporting proves useful.
 4. Introduce the versioned Check Outcome, Check Result, Score, Check Message,
    Check Error, and judgment-based Assessment model.
 5. Preserve each installed bundle's directory long enough to resolve its
-   Checker CLI and add the CLI protocol with bounded execution.
+   Checker CLI and add the CLI protocol with a fixed run-time limit and
+   temporary-file outcome capture.
 6. Add the external Agent Skill handoff and judgment-based Assessment path.
 7. Port hierarchical-help behavior into one `codekiln-help` Checker CLI and
    verify it with black-box tests.
@@ -736,6 +729,32 @@ boundary after the protocol has been exercised by a concrete bundle.
 No. `codekiln` chose **Check** and **Checker CLI**. Every Check belongs to a
 check bundle, so “bundle-owned” adds no distinction. When the implementation
 matters, the design distinguishes a Checker CLI from a built-in Rust checker.
+
+### 25 - How should Clilint handle Checker output and logs?
+
+`codekiln` questioned the fixed standard-output and retained-log limits before
+a concrete need for those limits exists. `codekiln` asked the drafting agent
+to compare alternatives such as writing to disk or streaming.
+
+The drafting agent compared three choices:
+
+- collecting both streams in memory is simple, but keeps the raw JSON and the
+  parsed Check Outcome in memory at the same time;
+- fixed size limits constrain memory, but can reject a valid Check Outcome
+  because of an arbitrary limit; and
+- writing standard output to a temporary file avoids the extra in-memory copy,
+  while letting standard error continue to the user preserves ordinary CLI
+  logging.
+
+The drafting agent chose the temporary-file option for the first protocol.
+Clilint parses the Check Outcome after the Checker exits. Checker logs continue
+directly to Clilint's standard error and are not copied into a Check Error.
+Clilint keeps the fixed run-time limit because a process that does not exit
+would otherwise stop the check indefinitely.
+
+This answer replaces the output and log limits in answer 19. The protocol can
+add streaming or a configurable limit after a concrete Checker demonstrates
+the need.
 
 ## Open Questions
 

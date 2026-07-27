@@ -112,40 +112,41 @@ SHALL identify the check's method.
 Clilint SHALL run a Checker CLI outside the Clilint process from the directory
 in which the user invoked Clilint. A bundle SHALL name the CLI with a nonempty
 command argument array. Clilint SHALL replace the literal `{bundle}`
-placeholder in any argument with the installed bundle directory and invoke the
-command directly without a shell. The Checker SHALL inherit Clilint's
-environment and operating-system permissions.
+placeholder in any argument with the installed bundle directory. Clilint SHALL
+use the first item as the program and the remaining items as its arguments.
+The Checker SHALL inherit Clilint's environment and operating-system
+permissions.
 
 #### Scenario: Interpreter-backed Checker CLI
 - **WHEN** a bundle declares `["python3", "{bundle}/checker.py"]`
-- **THEN** Clilint expands the script path and invokes Python directly without interpreting the Checker's language
+- **THEN** Clilint expands the script path, starts `python3`, and passes the script path as its first argument
 
 Clilint SHALL write one JSON Check Request to standard input and close it.
 Standard output SHALL contain only one versioned JSON Check Outcome. Standard
-error SHALL contain Checker logs. Clilint SHALL apply fixed limits to run time,
-protocol output, and retained logs. It SHALL state when retained logs were
-truncated and SHALL NOT buffer either stream without a limit. A bundle SHALL
-NOT raise these limits in the first protocol.
+error SHALL contain Checker logs. Clilint SHALL direct standard output to a
+temporary file and parse it after the Checker exits. Clilint SHALL leave the
+Checker standard error connected to its own standard error. Clilint SHALL stop
+a Checker that exceeds its fixed run-time limit.
 
 #### Scenario: Checker CLI inherits the project directory
 - **WHEN** a user invokes Clilint from a project directory
 - **THEN** the Checker CLI runs from that same directory
 
 #### Scenario: Checker CLI returns a valid Check Result
-- **WHEN** a Checker CLI completes within its limits and returns one valid Check Result
+- **WHEN** a Checker CLI completes within its run-time limit and returns one valid Check Result
 - **THEN** Clilint validates and records that result
 
 #### Scenario: Checker CLI violates the protocol
-- **WHEN** a Checker CLI times out, exits unsuccessfully, exceeds its output limit, or returns malformed output
-- **THEN** Clilint records a Check Error with the bounded Checker logs retained for that invocation
+- **WHEN** a Checker CLI times out, exits unsuccessfully, or returns malformed output
+- **THEN** Clilint records a Check Error without a Score
 
-#### Scenario: Checker writes excessive logs
-- **WHEN** a Checker CLI writes more standard error than Clilint's configured retention limit
-- **THEN** Clilint retains only the bounded amount and records that the logs were truncated
+#### Scenario: Checker writes logs
+- **WHEN** a Checker CLI writes logs to standard error
+- **THEN** the logs continue to Clilint's standard error and remain outside the Check Outcome
 
-#### Scenario: Bundle attempts to configure process limits
-- **WHEN** a bundle declares a timeout or standard-output or standard-error limit for its Checker CLI
-- **THEN** Clilint rejects the unsupported field instead of changing its fixed process limits
+#### Scenario: Bundle attempts to configure the run-time limit
+- **WHEN** a bundle declares a run-time limit for its Checker CLI
+- **THEN** Clilint rejects the unsupported field instead of changing its fixed run-time limit
 
 ### Requirement: Judgment-based Checker CLI
 A judgment-based Checker CLI SHALL be able to use an Agent Skill, rubric,

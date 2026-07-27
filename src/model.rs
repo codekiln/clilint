@@ -207,10 +207,6 @@ impl CheckResult {
 #[serde(deny_unknown_fields)]
 pub struct CheckError {
     pub message: String,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub checker_logs: String,
-    #[serde(default)]
-    pub logs_truncated: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -380,8 +376,6 @@ mod tests {
         let outcome = CheckOutcome::Error {
             error: CheckError {
                 message: "checker failed".into(),
-                checker_logs: String::new(),
-                logs_truncated: false,
             },
         };
         let value = serde_json::to_value(outcome).unwrap();

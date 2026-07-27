@@ -1,8 +1,7 @@
 # Check bundles
 
 A check bundle is a named, versioned collection of checks. Clilint includes
-the core `clilint` bundle. A project can install local bundles that add checks
-without changing Clilint.
+the core `clilint` bundle. A project can install local bundles that add checks.
 
 ## Install a local bundle
 
@@ -50,13 +49,9 @@ command = ["python3", "{bundle}/checker.py"]
 
 Every check in a local bundle declares one Checker CLI command. Clilint
 replaces the literal `{bundle}` placeholder with the bundle directory and
-starts the command directly, without a shell. The Checker runs from the
-directory where the user invoked Clilint and finds its own scripts, rubrics,
-Skills, and other resources.
-
-The command may name a native executable or an interpreter-backed CLI. The
-bundle author is responsible for making its runtime available on supported
-systems.
+uses the first item as the program and the remaining items as its arguments.
+The Checker runs from the directory where the user invoked Clilint and finds
+its own scripts, rubrics, Skills, and other resources.
 
 ## Exchange a request and outcome
 
@@ -73,8 +68,8 @@ Clilint writes one JSON Check Request to the Checker's standard input:
 }
 ```
 
-The Checker writes one JSON Check Outcome to standard output. Operational logs
-go to standard error.
+The Checker writes one JSON Check Outcome to standard output and its logs to
+standard error.
 
 ```json
 {
@@ -96,16 +91,14 @@ go to standard error.
 }
 ```
 
-A Score is a finite number from `0.0` through `4.0`. A Score below `4.0`
-requires at least one useful Check Message. A Score of `4.0` can contain Info
-messages and cannot contain Warning or Error messages.
+A Score is a number from `0.0` through `4.0`. A Score below `4.0` requires at
+least one useful Check Message. A Score of `4.0` can contain Info messages and
+cannot contain Warning or Error messages.
 
 A Checker that cannot produce a result returns a Check Error without a Score.
 Clilint also creates a Check Error when a Checker times out, exits
-unsuccessfully, writes too much data to standard output, writes too many logs
-to standard error, or returns invalid JSON. When the logs are too long, the
-Check Error contains the part that fits and states that Clilint cut the logs
-short.
+unsuccessfully, or returns invalid JSON. Checker logs continue to Clilint's
+standard error.
 
 ## Use judgment
 

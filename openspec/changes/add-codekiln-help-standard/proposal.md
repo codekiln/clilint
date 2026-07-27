@@ -15,7 +15,7 @@ checks.
   gathering, and production of the Check Outcome without adding
   check-specific code to Clilint.
 - Invoke each Checker CLI as an ordinary child process from the project
-  directory, with a bounded JSON request and outcome exchange.
+  directory, with a JSON request and outcome exchange.
 - Define one Check Outcome, Check Result, Score, and Check Message format for
   mechanistic and judgment-based Checker CLIs. Reserve Assessment for
   judgment-based Checks.

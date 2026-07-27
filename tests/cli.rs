@@ -29,6 +29,7 @@ fn json_report_with(
     bundle: Option<PathBuf>,
     environment: &[(&str, &str)],
 ) -> serde_json::Value {
+    let has_checker_cli = bundle.is_some();
     let mut command = clilint();
     command.args([
         "check",
@@ -46,7 +47,9 @@ fn json_report_with(
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(output.stderr.is_empty());
+    if !has_checker_cli {
+        assert!(output.stderr.is_empty());
+    }
     serde_json::from_slice(&output.stdout).unwrap()
 }
 
@@ -318,6 +321,26 @@ fn checker_cli_runs_from_the_project_and_finds_bundle_resources() {
             .as_str()
             .unwrap()
             .ends_with("checker-bundle/expectation.txt")
+    );
+}
+
+#[test]
+fn checker_cli_logs_continue_to_clilint_standard_error() {
+    let output = clilint()
+        .args([
+            "check",
+            fixture("useful-help-cli").to_str().unwrap(),
+            "--check-bundle",
+            fixture("checker-bundle").to_str().unwrap(),
+            "--format",
+            "json",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("fixture Checker ran"),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
     );
 }
 

@@ -45,8 +45,8 @@ Use only the evidence captured by Clilint.
    Message explaining what would improve the help. A `4.0` Assessment contains
    no Warning or Error message.
 
-5. Write `clilint-help-assessment.json`, copying the request identifier,
-   evidence digest, Check, and Skill exactly from `assessment_request`:
+5. Write `clilint-help-assessment.json`. Copy `request_id`, `evidence_digest`,
+   `check`, and `skill` exactly from `assessment_request`:
 
    ```json
    {
@@ -70,7 +70,10 @@ Use only the evidence captured by Clilint.
    }
    ```
 
-6. Ask Clilint to recompute the evidence and validate the Assessment:
+   `request_id` links the Assessment to this Check request.
+   `evidence_digest` changes when the captured evidence changes.
+
+6. Ask Clilint to gather the evidence again and validate the Assessment:
 
    ```sh
    clilint check <target> \

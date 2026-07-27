@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
-    io::{Read, Write},
+    fs::File,
+    io::{Read, Seek, Write},
     path::Path,
     process::{Command, Stdio},
     thread,
@@ -22,8 +23,6 @@ use crate::{
 };
 
 const CHECKER_TIMEOUT_MS: u64 = 60_000;
-const CHECKER_STDOUT_LIMIT: usize = 1_048_576;
-const CHECKER_LOG_LIMIT: usize = 65_536;
 
 pub fn check(
     target: &str,
@@ -278,31 +277,32 @@ fn run_checker_cli(
     let request_json = serde_json::to_vec(&request).map_err(|error| error.to_string())?;
     let process = run_process(&command, project_directory, &request_json);
     let outcome = match process {
-        Ok(process) => {
+        Ok(mut process) => {
             if let Some(message) = process_failure_message(&process) {
                 CheckOutcome::Error {
-                    error: process_error(&message, process),
+                    error: process_error(&message),
                 }
             } else {
-                match parse_checker_response(&process.stdout) {
+                let response = process
+                    .stdout
+                    .rewind()
+                    .map_err(|error| format!("could not read Checker CLI standard output: {error}"))
+                    .and_then(|_| parse_checker_response(&mut process.stdout));
+                match response {
                     Ok(response) => match validate_response(response, &request_id, check) {
                         Ok(outcome) => outcome,
                         Err(message) => CheckOutcome::Error {
-                            error: process_error(&message, process),
+                            error: process_error(&message),
                         },
                     },
                     Err(error) => CheckOutcome::Error {
-                        error: process_error(&error, process),
+                        error: process_error(&error),
                     },
                 }
             }
         }
         Err(message) => CheckOutcome::Error {
-            error: CheckError {
-                message,
-                checker_logs: String::new(),
-                logs_truncated: false,
-            },
+            error: CheckError { message },
         },
     };
     Ok(CheckRecord {
@@ -316,10 +316,6 @@ fn run_checker_cli(
 fn process_failure_message(process: &ProcessOutput) -> Option<String> {
     if process.timed_out {
         Some("Checker CLI timed out".into())
-    } else if process.stdout_exceeded {
-        Some("Checker CLI wrote too much data to standard output".into())
-    } else if process.stderr_exceeded {
-        Some("Checker CLI wrote too many logs to standard error".into())
     } else if process.exit_status != Some(0) {
         Some(format!(
             "Checker CLI exited with status {}",
@@ -332,8 +328,8 @@ fn process_failure_message(process: &ProcessOutput) -> Option<String> {
     }
 }
 
-fn parse_checker_response(bytes: &[u8]) -> Result<CheckerResponse, String> {
-    let value: serde_json::Value = serde_json::from_slice(bytes)
+fn parse_checker_response(reader: impl Read) -> Result<CheckerResponse, String> {
+    let value: serde_json::Value = serde_json::from_reader(reader)
         .map_err(|error| format!("Checker CLI returned invalid JSON: {error}"))?;
     let object = value
         .as_object()
@@ -419,10 +415,7 @@ fn validate_response(
 struct ProcessOutput {
     exit_status: Option<i32>,
     timed_out: bool,
-    stdout: Vec<u8>,
-    stderr: Vec<u8>,
-    stdout_exceeded: bool,
-    stderr_exceeded: bool,
+    stdout: File,
 }
 
 fn run_process(
@@ -433,12 +426,17 @@ fn run_process(
     let (program, arguments) = command
         .split_first()
         .ok_or_else(|| "Checker CLI command is empty".to_owned())?;
+    let stdout = tempfile::tempfile()
+        .map_err(|error| format!("could not create Checker CLI output file: {error}"))?;
+    let child_stdout = stdout
+        .try_clone()
+        .map_err(|error| format!("could not prepare Checker CLI output file: {error}"))?;
     let mut child = Command::new(program)
         .args(arguments)
         .current_dir(project_directory)
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stdout(Stdio::from(child_stdout))
+        .stderr(Stdio::inherit())
         .spawn()
         .map_err(|error| format!("could not start Checker CLI {program}: {error}"))?;
     child
@@ -448,16 +446,6 @@ fn run_process(
         .write_all(input)
         .map_err(|error| format!("could not write Checker CLI request: {error}"))?;
 
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| "Checker CLI standard output was unavailable".to_owned())?;
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| "Checker CLI standard error was unavailable".to_owned())?;
-    let stdout_reader = thread::spawn(move || read_bounded(stdout, CHECKER_STDOUT_LIMIT));
-    let stderr_reader = thread::spawn(move || read_bounded(stderr, CHECKER_LOG_LIMIT));
     let deadline = Instant::now() + Duration::from_millis(CHECKER_TIMEOUT_MS);
     let (status, timed_out) = loop {
         if let Some(status) = child
@@ -477,8 +465,6 @@ fn run_process(
         }
         thread::sleep(Duration::from_millis(5));
     };
-    let (stdout, stdout_exceeded) = join_reader(stdout_reader, "standard output")?;
-    let (stderr, stderr_exceeded) = join_reader(stderr_reader, "standard error")?;
     Ok(ProcessOutput {
         exit_status: if timed_out {
             None
@@ -487,38 +473,12 @@ fn run_process(
         },
         timed_out,
         stdout,
-        stderr,
-        stdout_exceeded,
-        stderr_exceeded,
     })
 }
 
-fn read_bounded(mut reader: impl Read, limit: usize) -> std::io::Result<(Vec<u8>, bool)> {
-    let mut output = Vec::new();
-    reader
-        .by_ref()
-        .take(limit.saturating_add(1) as u64)
-        .read_to_end(&mut output)?;
-    let exceeded = output.len() > limit;
-    output.truncate(limit);
-    Ok((output, exceeded))
-}
-
-fn join_reader(
-    reader: thread::JoinHandle<std::io::Result<(Vec<u8>, bool)>>,
-    stream: &str,
-) -> Result<(Vec<u8>, bool), String> {
-    reader
-        .join()
-        .map_err(|_| format!("Checker CLI {stream} reader panicked"))?
-        .map_err(|error| format!("could not read Checker CLI {stream}: {error}"))
-}
-
-fn process_error(message: &str, process: ProcessOutput) -> CheckError {
+fn process_error(message: &str) -> CheckError {
     CheckError {
         message: message.into(),
-        checker_logs: String::from_utf8_lossy(&process.stderr).into_owned(),
-        logs_truncated: process.stderr_exceeded,
     }
 }
 
@@ -641,40 +601,25 @@ mod tests {
             "unexpected": true
         });
         assert!(
-            parse_checker_response(&serde_json::to_vec(&response).unwrap())
+            parse_checker_response(serde_json::to_vec(&response).unwrap().as_slice())
                 .unwrap_err()
                 .contains("unknown field")
         );
     }
 
     #[test]
-    fn checker_process_failures_are_distinct_and_keep_truncated_logs() {
-        let output = |exit_status, timed_out, stdout_exceeded, stderr_exceeded| ProcessOutput {
+    fn checker_process_failures_are_distinct() {
+        let output = |exit_status, timed_out| ProcessOutput {
             exit_status,
             timed_out,
-            stdout: Vec::new(),
-            stderr: b"checker log".to_vec(),
-            stdout_exceeded,
-            stderr_exceeded,
+            stdout: tempfile::tempfile().unwrap(),
         };
         assert_eq!(
-            process_failure_message(&output(None, true, false, false)).unwrap(),
+            process_failure_message(&output(None, true)).unwrap(),
             "Checker CLI timed out"
         );
         assert!(
-            process_failure_message(&output(Some(0), false, true, false))
-                .unwrap()
-                .contains("standard output")
-        );
-        let logs = output(Some(0), false, false, true);
-        assert!(
-            process_failure_message(&logs)
-                .unwrap()
-                .contains("standard error")
-        );
-        assert!(process_error("error", logs).logs_truncated);
-        assert!(
-            process_failure_message(&output(Some(7), false, false, false))
+            process_failure_message(&output(Some(7), false))
                 .unwrap()
                 .contains("status 7")
         );

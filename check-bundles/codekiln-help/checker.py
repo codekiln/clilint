@@ -623,8 +623,6 @@ def error_response(request: dict[str, Any], message: str) -> dict[str, Any]:
         "outcome": "error",
         "error": {
             "message": message,
-            "checker_logs": "",
-            "logs_truncated": False,
         },
     }
 
@@ -640,7 +638,6 @@ def main() -> int:
     except Exception as error:  # Keep Checker failures inside the protocol.
         print(json.dumps(error_response(request, f"Checker failed: {error}")))
         return 0
-    print("codekiln-help Checker completed", file=sys.stderr)
     print(json.dumps(response, separators=(",", ":")))
     return 0
 

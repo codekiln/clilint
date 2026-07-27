@@ -28,8 +28,6 @@ if not skill_path.is_file():
             "outcome": "error",
             "error": {
                 "message": "The Checker could not find its Agent Skill.",
-                "checker_logs": "",
-                "logs_truncated": False,
             },
         }
     )
@@ -60,8 +58,6 @@ elif (
             "outcome": "error",
             "error": {
                 "message": "Assessment does not match the pending request.",
-                "checker_logs": "",
-                "logs_truncated": False,
             },
         }
     )

@@ -18,7 +18,6 @@ METHOD = "mechanistic"
 COMMAND_COUNT_LIMIT = 64
 COMMAND_DEPTH_LIMIT = 8
 DOCUMENT_BYTES_LIMIT = 1_048_576
-SEARCH_RESULTS_LIMIT = 256
 TOTAL_COMMANDS_LIMIT = 1_024
 COMMAND_TIMEOUT_SECONDS = 2
 
@@ -39,8 +38,6 @@ class HelpChecker:
         if not self.hierarchy_limit_exceeded:
             for path in paths:
                 self.check_path(path)
-            self.check_search(paths, False, "permissions")
-            self.check_search(paths, True, "programmatic")
         failures = len(self.messages)
         score = 4.0 if failures == 0 else max(
             0.0, 4.0 * (self.expectations - failures) / max(self.expectations, 1)
@@ -363,97 +360,6 @@ class HelpChecker:
                 "Section retrieval must reject a section absent from the outline.",
                 path,
                 missing,
-            )
-
-    def check_search(
-        self,
-        paths: list[tuple[str, ...]],
-        programmatic: bool,
-        query: str,
-    ) -> None:
-        if not paths:
-            return
-        programmatic_argument = ["--programmatic"] if programmatic else []
-        response = self.run_json(
-            (),
-            [
-                "help",
-                "search",
-                query,
-                *programmatic_argument,
-                "--format",
-                "json",
-            ],
-            f"search for {query}",
-        )
-        if response is None or not self.validate_base_response(
-            response, (), programmatic, f"search for {query}"
-        ):
-            return
-        results = response.get("results")
-        self.expectations += 1
-        if not isinstance(results, list) or not results:
-            self.fail(
-                "A search for a term present in help must return a result.",
-                (),
-                {"query": query, "response": response},
-            )
-            return
-        if len(results) > SEARCH_RESULTS_LIMIT:
-            self.fail(
-                "Search results exceed the configured limit.",
-                (),
-                {"limit": SEARCH_RESULTS_LIMIT, "count": len(results)},
-            )
-            return
-        known = set(paths)
-        valid_results = []
-        for result in results:
-            command_path = (
-                tuple(result.get("command_path", []))
-                if isinstance(result, dict)
-                else ()
-            )
-            valid = (
-                isinstance(result, dict)
-                and command_path in known
-                and isinstance(result.get("section"), str)
-                and bool(result["section"])
-            )
-            if not valid:
-                self.fail(
-                    "A search result has an invalid command path or section.",
-                    (),
-                    {"result": result},
-                )
-            else:
-                valid_results.append((command_path, result["section"]))
-        if valid_results:
-            command_path, section = valid_results[0]
-            followed = self.run_json(
-                command_path,
-                [
-                    "help",
-                    "section",
-                    section,
-                    *programmatic_argument,
-                    "--format",
-                    "json",
-                ],
-                "search section",
-            )
-            self.expect(
-                followed is not None
-                and followed.get("programmatic") is programmatic
-                and followed.get("command_path") == list(command_path)
-                and any(
-                    value.get("section") == section
-                    for value in followed.get("sections", [])
-                    if isinstance(value, dict)
-                ),
-                "A section returned by search must be retrievable.",
-                command_path,
-                {"search_result": results[0], "section_response": followed},
             )
 
     def validate_base_response(

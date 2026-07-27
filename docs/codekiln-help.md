@@ -25,12 +25,14 @@ Every advertised command path provides:
 <tool> [<command> ...] help
 <tool> [<command> ...] help outline
 <tool> [<command> ...] help section <section> [--recursive]
-<tool> [<command> ...] help search <query>
 ```
 
 `<command path> help` and `<command path> --help` describe the same command.
-Each help operation writes to standard output without starting a pager or
-requiring input.
+Each help operation writes to standard output and completes without input.
+Callers can pipe the output to tools such as `less`, `rg`, `grep`, or `jq`.
+This follows [clig.dev's output guidance](https://clig.dev/#output), which
+recommends output that composes with other programs and limits pagers to
+interactive streams.
 
 The default help describes the command's purpose, behavior, usage, side
 effects, and required permissions when they apply. `--programmatic` retains
@@ -39,27 +41,22 @@ and avoiding interactive displays.
 
 ## JSON responses
 
-Every JSON response identifies its format, command path, and programmatic
-mode:
+`help --format json` identifies the current command and its immediate child
+commands:
 
 ```json
 {
   "format_version": 1,
-  "command_path": ["repo", "clone"],
-  "programmatic": false
-}
-```
-
-Ordinary help adds immediate children:
-
-```json
-{
+  "command_path": ["repo"],
+  "programmatic": false,
   "child_commands": [{"name": "clone"}]
 }
 ```
 
 Callers discover the complete command hierarchy by requesting JSON help for
-each returned child.
+each returned child. The first JSON format supports command discovery; it does
+not repeat every argument or option. The text returned by `help` and `--help`
+describes the command's usage, arguments, options, and child commands.
 
 An outline adds ordered headings:
 
@@ -90,22 +87,7 @@ An outline adds ordered headings:
 The default section response contains each matching heading and its direct
 body. `--recursive` includes descendants. Repeated section names return every
 match in document order.
-
-Search covers the current command and its descendants:
-
-```json
-{
-  "results": [
-    {
-      "command_path": ["repo", "clone"],
-      "section": "permissions",
-      "title": "Permissions"
-    }
-  ]
-}
-```
-
-Every `section` returned by outline or search must work with the corresponding
+Every `section` returned by an outline must work with the corresponding
 section command.
 
 ## Checker behavior
@@ -114,12 +96,12 @@ The Checker:
 
 - recursively discovers command paths;
 - compares `help` with `--help`;
-- validates outlines, filters, sections, and search results;
+- validates JSON command paths, outline headings, `--level` and `--max-level`
+  results, and section retrieval;
 - verifies the added programmatic guidance;
 - closes input and captures output without a terminal;
-- sets offline behavior for tested help invocations; and
-- bounds command count, depth, document bytes, search results, total commands,
-  and time per command.
+- bounds command count, depth, document bytes, total commands, and time per
+  command.
 
 The first implementation uses fixed limits:
 
@@ -128,7 +110,6 @@ The first implementation uses fixed limits:
 | Discovered command paths | 64 |
 | Command depth | 8 |
 | One captured stream | 1 MiB |
-| Search results | 256 |
 | Total help commands | 1,024 |
 | One help command | 2 seconds |
 
@@ -138,4 +119,5 @@ command path, invocation, output, and validation detail.
 
 The [passing fixture](../tests/fixtures/hierarchical-help-cli) and
 [integration tests](../tests/cli.rs) cover passing help, nested failures,
-malformed JSON, invalid command paths and headings, and empty search results.
+malformed JSON, invalid command paths and headings, and incomplete
+programmatic guidance.

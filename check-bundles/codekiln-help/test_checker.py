@@ -31,19 +31,6 @@ class DiscoveryChecker(checker.HelpChecker):
         }
 
 
-class SearchChecker(checker.HelpChecker):
-    def run_json(self, path, arguments, operation):
-        return {
-            "format_version": 1,
-            "command_path": [],
-            "programmatic": False,
-            "results": [
-                {"command_path": [], "section": "one"},
-                {"command_path": [], "section": "two"},
-            ],
-        }
-
-
 class LimitTests(unittest.TestCase):
     def test_command_count_limit_is_reported(self):
         instance = DiscoveryChecker(request())
@@ -56,12 +43,6 @@ class LimitTests(unittest.TestCase):
         with mock.patch.object(checker, "COMMAND_DEPTH_LIMIT", 0):
             instance.discover_paths()
         self.assertIn("depth limit", instance.messages[0]["message"])
-
-    def test_search_result_limit_is_reported(self):
-        instance = SearchChecker(request())
-        with mock.patch.object(checker, "SEARCH_RESULTS_LIMIT", 1):
-            instance.check_search([()], False, "permissions")
-        self.assertIn("Search results", instance.messages[0]["message"])
 
     def test_total_command_limit_is_reported_once(self):
         instance = checker.HelpChecker(request())

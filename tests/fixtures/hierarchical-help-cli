@@ -195,30 +195,6 @@ def main():
                 print(section_value["content"])
         return 0
 
-    if operation == "search":
-        query = rest[1] if len(rest) > 1 else ""
-        results = []
-        for command_path in PATHS:
-            if command_path[: len(path)] != path:
-                continue
-            for heading in headings(programmatic):
-                if query.lower() in (heading["title"] + " help").lower():
-                    results.append(
-                        {
-                            "command_path": list(command_path),
-                            "section": heading["section"],
-                            "title": heading["title"],
-                        }
-                    )
-        if os.environ.get("HIERARCHICAL_HELP_EMPTY_SEARCH") == "1":
-            results = []
-        if json_format:
-            write_json(response(path, programmatic, results=results))
-        else:
-            for result in results:
-                print(" ".join(result["command_path"]), result["section"], result["title"])
-        return 0
-
     if json_format:
         write_json(
             response(

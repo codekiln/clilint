@@ -136,7 +136,6 @@ Every command path reserves a `help` child:
 <tool> [<command> ...] help
 <tool> [<command> ...] help outline
 <tool> [<command> ...] help section <section>
-<tool> [<command> ...] help search <query>
 ```
 
 For example, `tool repo clone help` describes `tool repo clone`.
@@ -204,10 +203,10 @@ supplied a section.
 
 ### Keep every help command non-interactive
 
-`help`, `outline`, `section`, and `search` write to standard output and do not
-start a pager. Nothing in the standard behaves differently on a terminal, so a
-person and a program run the same commands and get the same text. A person who
-wants paging or rendering composes one: `tool help | less`.
+`help`, `outline`, and `section` write to standard output and do not start a
+pager. Nothing in the standard behaves differently on a terminal, so a person
+and a program run the same commands and get the same text. A person who wants
+paging or rendering composes one: `tool help | less`.
 
 Rich local reading and web viewing are deferred to issue #9. They return only
 once they can detect the environment a caller is in.
@@ -361,7 +360,7 @@ The checker will:
 3. run help commands at every discovered command path;
 4. read the default and `--programmatic` outlines;
 5. copy returned `section` values into section commands;
-6. test search and non-interactive output; and
+6. test non-interactive output; and
 7. return focused evidence with each Check Message.
 
 The bundle can split this work into several checks later if separate execution,
@@ -370,10 +369,10 @@ configuration, or reporting proves useful.
 ## Risks / Trade-offs
 
 - **A tested CLI tool can advertise a very large command hierarchy** → Limit command
-  count, command depth, document size, search results, total commands run, and
-  time per command.
+  count, command depth, document size, total commands run, and time per
+  command.
 - **Generated section values can change when headings change** → Use the
-  `section` value from the current outline or search result.
+  `section` value from the current outline.
 - **Added programmatic guidance can appear more than once** → Check the final
   document returned by `--programmatic` and report repeated or misplaced
   guidance in a focused Check Message.
@@ -755,6 +754,17 @@ would otherwise stop the check indefinitely.
 This answer replaces the output and log limits in answer 19. The protocol can
 add streaming or a configurable limit after a concrete Checker demonstrates
 the need.
+
+### 26 - Should the first help standard include a search operation?
+
+No. `codekiln` chose command output that callers can pipe to tools such as
+`rg`, `grep`, or `jq`. `codekiln` noted that a dedicated search operation could
+be useful if it searches the complete command hierarchy, but chose to defer it
+until that need is concrete.
+
+The drafting agent had included `help search` to return command paths and
+section values. The current standard keeps `help`, `outline`, `section`, and
+JSON command discovery.
 
 ## Open Questions
 

@@ -19,17 +19,16 @@ checks.
 - Define one Check Outcome, Check Result, Score, and Check Message format for
   mechanistic and judgment-based Checker CLIs. Reserve Assessment for
   judgment-based Checks.
-- Keep built-in checkers in Rust for this change while making their results use
-  the shared output model.
+- Keep the built-in checkers in place for this change while making their
+  results use the shared output model.
 - Use a file-based, two-pass Assessment handoff without choosing an AI model or
   agent harness.
-- Build `codekiln-help` with the same bundle format, Checker CLI protocol, and
-  inheritance available to other bundle authors.
+- Build `codekiln-help` with the same bundle format and Checker CLI protocol
+  available to other bundle authors.
 - Document `codekiln-help` as a worked example of creating, testing, installing,
-  and extending a custom Clilint check bundle.
+  and combining custom Clilint check bundles.
 - Define offline command discovery, Markdown outlines, section retrieval,
-  search, shared help for people and agents, and optional programmatic-use
-  guidance.
+  shared help for people and agents, and optional programmatic-use guidance.
 - Add JSON output that lets clients copy command paths and sections
   between help operations.
 - Add one `codekiln-help` check that discovers the tested CLI tool's command

@@ -483,12 +483,11 @@ fn codekiln_help_returns_focused_messages_for_nested_failures() {
 }
 
 #[test]
-fn codekiln_help_rejects_malformed_relationships_and_empty_search() {
+fn codekiln_help_rejects_malformed_relationships_and_incomplete_guidance() {
     for (name, value) in [
         ("HIERARCHICAL_HELP_MALFORMED", "1"),
         ("HIERARCHICAL_HELP_WRONG_PATH", "1"),
         ("HIERARCHICAL_HELP_INVALID_HEADING", "1"),
-        ("HIERARCHICAL_HELP_EMPTY_SEARCH", "1"),
         ("HIERARCHICAL_HELP_INCOMPLETE_PROGRAMMATIC", "1"),
     ] {
         let report = json_report_with(

@@ -102,10 +102,11 @@ standard error.
 
 ## Use judgment
 
-A judgment-based Checker uses `"method": "judgment-based"`. It may gather
-evidence and return Awaiting Assessment. An external agent writes an
-Assessment JSON file, and a later Clilint invocation supplies that file to the
-same Checker:
+A judgment-based Checker uses `"method": "judgment-based"`. When the Checker
+has gathered its evidence and needs an agent to judge it, the Check Outcome
+uses `"outcome": "awaiting-assessment"` and includes the evidence and rubric.
+An external agent writes an Assessment JSON file, and a later Clilint
+invocation supplies that file to the same Checker:
 
 ```sh
 clilint check ./my-cli --assessment ./assessment.json
@@ -115,18 +116,20 @@ The Checker validates the request, evidence, Skill, Score, and messages before
 returning a Check Result. See [Judgment-based Assessments](ai-assessments.md)
 for the complete file workflow.
 
-## Trust and composition
+## Trust and combine bundles
 
 An installed local bundle contains executable code and receives the same
 environment and operating-system permissions as Clilint. Review a bundle
 before installing it.
 
-An extension adds checks to its parent. It can make an inherited check more
-severe and cannot remove, replace, or weaken inherited checks. Clilint
-validates the complete bundle before running the tested CLI tool.
+The `extends = "clilint"` line includes the core bundle's checks before the
+checks declared in the local bundle. A bundle can use
+`extends = "codekiln-help"` to include both the core and `codekiln-help`
+checks before adding its own. Clilint validates every named bundle and Check
+before running the tested CLI tool.
 
 The built-in bundle at
 [`check-bundles/clilint/clilint.toml`](../check-bundles/clilint/clilint.toml)
-shows the built-in Rust checkers. The
+shows the built-in checkers. The
 [`codekiln-help` bundle](../check-bundles/codekiln-help/clilint.toml) and its
 [implementation guide](codekiln-help.md) show a complete Checker CLI.

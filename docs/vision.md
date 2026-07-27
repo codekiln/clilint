@@ -7,10 +7,12 @@ A Check states one expectation about a project. A Checker gathers evidence
 and returns a Score with messages explaining what could improve. A check
 bundle groups related Checks so projects can reuse them.
 
-Built-in Rust checkers cover common mechanical behavior. Checks added through
-local bundles use Checker CLIs. They can use scripts, other tools, AI agents,
-or any programming language while Clilint keeps one request and outcome
-format.
+Checks can ask whether `--help` exits successfully, whether a release pipeline
+runs in CI, whether help teaches a likely task, or whether a changelog explains
+important changes. Built-in checkers cover common mechanical behavior. Checks
+added through local bundles use Checker CLIs. They can use scripts, other
+tools, AI agents, or any programming language while Clilint keeps one request
+and outcome format.
 
 ## Core and optional standards
 
@@ -19,7 +21,7 @@ of the [Command Line Interface Guidelines](https://clig.dev/). Clilint should
 automate the guidelines it can evaluate reliably.
 
 Optional bundles add focused standards. A project installs the bundles it
-wants, and an extension can add stricter local expectations. The
+wants, and a project bundle can add local expectations. The
 [`codekiln-help` bundle](codekiln-help.md) checks navigable offline help and
 serves as an example for bundle authors.
 

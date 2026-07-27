@@ -47,10 +47,9 @@ title, and `section` value.
 
 ### Requirement: Section retrieval
 `<command path> help section <section>` SHALL accept a `section` value returned
-by the current document's outline or search result. The default response SHALL
-contain every matching heading and each heading's direct body in document
-order. `--recursive` SHALL also contain each matching heading's descendant
-sections.
+by the current document's outline. The default response SHALL contain every
+matching heading and each heading's direct body in document order.
+`--recursive` SHALL also contain each matching heading's descendant sections.
 
 #### Scenario: Retrieve a direct section body
 - **WHEN** an agent retrieves an H3 section that contains an H4 child
@@ -69,10 +68,10 @@ sections.
 - **THEN** the command exits non-zero and identifies the invalid section argument
 
 ### Requirement: JSON help responses
-JSON help overviews, outlines, searches, and section responses SHALL identify
-their format version, command path, and whether they include programmatic
-guidance. JSON results that refer to sections SHALL include a `section` value
-accepted by the section operation.
+JSON help overviews, outlines, and section responses SHALL identify their
+format version, command path, and whether they include programmatic guidance.
+JSON results that refer to sections SHALL include a `section` value accepted
+by the section operation.
 
 #### Scenario: Follow a JSON outline
 - **WHEN** an agent copies the `section` value from a JSON outline into a section invocation for the same command document
@@ -99,20 +98,10 @@ and avoiding interactive output.
 - **WHEN** a caller uses `--programmatic` with outline and section operations
 - **THEN** the returned `section` values can retrieve sections from the default help and its added programmatic guidance
 
-### Requirement: Offline documentation search
-`<command path> help search <query>` SHALL search locally available help
-documents for the current command and the commands below it. The result SHALL
-contain matching command paths and `section` values. `--programmatic` SHALL
-include the added programmatic guidance.
-
-#### Scenario: Search all local documentation
-- **WHEN** an agent invokes `tool help search permissions --programmatic --format json` without network access
-- **THEN** the result identifies locally available matching sections that can be passed to the section operation
-
 ### Requirement: Non-interactive help retrieval
-Help overview, outline, section, and search operations SHALL write to
-stdout without starting a pager. When stdout is not a terminal, they SHALL omit
-terminal control sequences.
+Help overview, outline, and section operations SHALL write to stdout without
+starting a pager. When stdout is not a terminal, they SHALL omit terminal
+control sequences.
 
 #### Scenario: Agent retrieves help through a pipe
 - **WHEN** an agent captures `tool repo clone help section <section>`
@@ -120,7 +109,7 @@ terminal control sequences.
 
 ### Requirement: Offline help behavior
 Child-command discovery, default and `--programmatic` overviews, outlines,
-section retrieval, and search SHALL complete without network access.
+and section retrieval SHALL complete without network access.
 
 #### Scenario: Navigate without network access
 - **WHEN** network access is unavailable

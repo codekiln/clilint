@@ -150,4 +150,5 @@ bundle-owned Check and keeps the project as its working directory. Questions
 - [x] 13.3 Run the lefthook pre-commit secret scan
 - [x] 13.4 Verify the implementation against the proposal, design, and every delta specification
 - [x] 13.5 Replace fixed Checker output and log limits with temporary-file outcome capture and standard-error propagation, then update the guides and protocol tests
-- [ ] 13.6 Run the spec-sync workflow before archiving the change
+- [x] 13.6 Remove help search from the first standard, Checker CLI, fixtures, tests, and guides after review
+- [ ] 13.7 Run the spec-sync workflow before archiving the change

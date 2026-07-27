@@ -43,8 +43,8 @@ in JSON help.
 
 ### Requirement: JSON help validation
 The hierarchical-help checker SHALL validate JSON format versions, command
-paths, heading levels, `section` values, search results, and relationships
-between responses before using returned values in later commands.
+paths, heading levels, `section` values, and relationships between responses
+before using returned values in later commands.
 
 #### Scenario: Follow a discovered section
 - **WHEN** a JSON outline returns a valid `section` value
@@ -56,9 +56,9 @@ between responses before using returned values in later commands.
 
 ### Requirement: Hierarchical-help limits
 The hierarchical-help checker SHALL bound command count, command depth,
-captured document bytes, search results, total help commands, and time per
-command. Its configured limits SHALL permit every bound to be reached and
-reported independently.
+captured document bytes, total help commands, and time per command. Its
+configured limits SHALL permit every bound to be reached and reported
+independently.
 
 #### Scenario: Tested CLI tool advertises excessive commands
 - **WHEN** recursive child-command discovery exceeds the command-count limit
@@ -77,15 +77,6 @@ machine-readable output, and avoiding interactive output.
 #### Scenario: Programmatic guidance omits an instruction
 - **WHEN** programmatic help mentions JSON and sections but does not explain piping or avoiding interactive output
 - **THEN** the Check Result contains a Check Message for the omitted required guidance
-
-### Requirement: Search checking
-The hierarchical-help checker SHALL verify that a search for a term present in
-the local help returns at least one valid command path and `section` value that
-can be used for section retrieval.
-
-#### Scenario: Search returns no results
-- **WHEN** the checker searches for a term present in the fixture help and receives an empty result
-- **THEN** the Check Result contains an Error-level Check Message for search
 
 ### Requirement: Non-interactive offline checking
 The hierarchical-help checker SHALL close standard input for tested CLI tool
